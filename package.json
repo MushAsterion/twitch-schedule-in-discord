@@ -1,0 +1,13 @@
+{
+    "name": "twitch-schedule-in-discord",
+    "description": "A simple bot to manage your Twitch channel's schedule from Discord.",
+    "version": "0.0.1",
+    "main": "index.js",
+    "type": "module",
+    "dependencies": {
+        "discord.js": "^14.15.3",
+        "dotenv": "^16.4.5",
+        "lz-string": "^1.5.0",
+        "mongoose": "^8.5.2"
+    }
+}
