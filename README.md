@@ -74,12 +74,12 @@ Bot({
         redirectUri: process.env.TWITCH_CLIENT_REDIRECT_URI
     },
     token: process.env.DISCORD_TOKEN,
-    registerCommands: process.env.DISCORD_REGISTERCOMMANDS
+    registerCommands: process.env.DISCORD_REGISTERCOMMANDS === 'true'
 });
 
 // Add OAuth validation
 import { createServer } from 'http';
-import { saveTwitchOAuthCode } from 'twitch-schedule-in-discord/module';
+import { saveTwitchOAuthCode } from 'twitch-schedule-in-discord/module.js';
 createServer(async (req, res) => {
     // This functions once resolved returns a boolean on whether the URL matches redirect URI and
     // if it was correctly saved. It will not save any content not linked to the target URL.
