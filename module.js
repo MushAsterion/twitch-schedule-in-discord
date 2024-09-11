@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 
 import { getTwitchHeaders, fetchTwitchData, refreshTwitchToken } from './src/twitch.js';
 import localization, { getLocalizedText, localizedDate } from './src/localization.js';
+import { sortByRelevance } from './src/string.js';
 
 /**
  * Add stream options to builder.
@@ -153,10 +154,12 @@ export default async function (config) {
                                               .then(response => response.json())
                                               .then(games =>
                                                   interaction.respond(
-                                                      (games?.data ?? []).slice(0, 25).map(game => ({
-                                                          name: game.name,
-                                                          value: game.id
-                                                      }))
+                                                      sortByRelevance(games?.data ?? [], focused.value, 'name')
+                                                          .slice(0, 25)
+                                                          .map(game => ({
+                                                              name: game.name,
+                                                              value: game.id
+                                                          }))
                                                   )
                                               )
                                         : interaction.respond([])
@@ -209,7 +212,7 @@ export default async function (config) {
                         } else if (focused.name === localization.OPTION_STREAM_TIMEZONE.name.default) {
                             return interaction.respond(
                                 Intl.supportedValuesOf('timeZone')
-                                    .filter(t => t.match(focused.value))
+                                    .filter(t => t.match(new RegExp(focused.value, 'i')))
                                     .slice(0, 25)
                                     .map(t => ({ name: t, value: t }))
                             );
