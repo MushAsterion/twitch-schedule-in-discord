@@ -190,7 +190,7 @@ export default async function (config) {
 
                                         return {
                                             name: `${date.toLocaleDateString(locale)} (${date.toLocaleDateString(locale, { dateStyle: 'long' })})`,
-                                            value: date.toLocaleDateString('az')
+                                            value: date.toISOString().slice(0, 10)
                                         };
                                     })
                                     .filter(d => d.name.match(focused.value) || d.value.match(focused.value))
@@ -289,15 +289,20 @@ export default async function (config) {
 
                                 return fetch(`https://api.twitch.tv/helix/schedule/segment?broadcaster_id=${channel.twitchId}${subcommand === localization.COMMAND_CALENDAR_EDIT.name.default ? `&id=${LZString.decompressFromUTF16(interaction.options.getString(localization.OPTION_STREAM_STREAM.name.default))}` : ''}`, {
                                     method: subcommand === localization.COMMAND_CALENDAR_CREATE.name.default ? 'POST' : 'PATCH',
-                                    headers: await getTwitchHeaders(config.twitch.clientId, config.twitch.clientSecret, await getTwitchUserToken(interaction, channel)),
+                                    headers: Object.assign(await getTwitchHeaders(config.twitch.clientId, config.twitch.clientSecret, await getTwitchUserToken(interaction, channel)), { 'Content-Type': 'application/json' }),
                                     body: JSON.stringify(body)
-                                }).then(response => {
+                                }).then(async response => {
                                     if (response.status === 401 || response.status === 403) {
                                         return interaction.editReply(getLocalizedText('TEXT_NOT_CONNECTED', locale).replaceAll('$url', `${connectUrl}&state=${LZString.compressToBase64(JSON.stringify({ guildId: interaction.guildId }))}`));
                                     } else if (response.status >= 200 && response.status < 300) {
                                         return interaction.editReply(getLocalizedText(subcommand === localization.COMMAND_CALENDAR_CREATE.name.default ? 'TEXT_STREAM_CREATED' : 'TEXT_STREAM_EDITED', locale));
                                     } else {
                                         console.error(response.statusText);
+
+                                        try {
+                                            console.error(await response.json());
+                                        } catch (err) {}
+
                                         return interaction.editReply(getLocalizedText('TEXT_ERROR', locale));
                                     }
                                 });
@@ -305,12 +310,17 @@ export default async function (config) {
                                 return fetch(`https://api.twitch.tv/helix/schedule/segment?broadcaster_id=${channel.twitchId}&id=${LZString.decompressFromUTF16(interaction.options.getString(localization.OPTION_STREAM_STREAM.name.default) ?? '')}`, {
                                     method: 'DELETE',
                                     headers: await getTwitchHeaders(config.twitch.clientId, config.twitch.clientSecret, await getTwitchUserToken(interaction, channel))
-                                }).then(response => {
+                                }).then(async response => {
                                     if (response.status >= 200 && response.status < 300) {
                                         return interaction.editReply(getLocalizedText('TEXT_STREAM_DELETED', locale));
                                     }
 
                                     console.error(response.statusText);
+
+                                    try {
+                                        console.error(await response.json());
+                                    } catch (err) {}
+
                                     return interaction.editReply(getLocalizedText('TEXT_ERROR', locale));
                                 });
                         }
