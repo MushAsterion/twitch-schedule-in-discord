@@ -17,7 +17,8 @@ Bot({
         redirectUri: process.env.TWITCH_CLIENT_REDIRECT_URI
     },
     token: process.env.DISCORD_TOKEN,
-    registerCommands: process.env.DISCORD_REGISTER_COMMANDS === 'true'
+    registerCommands: process.env.DISCORD_REGISTER_COMMANDS === 'true',
+    timeZone: process.env.DEFAULT_TIMEZONE
 });
 
 import { createServer } from 'http';

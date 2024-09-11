@@ -5,6 +5,10 @@ const schema = new mongoose.Schema({
         type: mongoose.SchemaTypes.String,
         required: true
     },
+    timeZone: {
+        type: mongoose.SchemaTypes.String,
+        required: false
+    },
     twitchId: {
         type: mongoose.SchemaTypes.String,
         required: true

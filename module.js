@@ -50,15 +50,6 @@ function addStreamOptions(builder, required = false) {
                 .setAutocomplete(true)
                 .setRequired(required)
         )
-        .addStringOption(
-            new SlashCommandStringOption()
-                .setName(localization.OPTION_STREAM_TIMEZONE.name.default)
-                .setNameLocalizations(localization.OPTION_STREAM_TIMEZONE.name.localization ?? null)
-                .setDescription(localization.OPTION_STREAM_TIMEZONE.description.default)
-                .setDescriptionLocalizations(localization.OPTION_STREAM_TIMEZONE.description.localization ?? null)
-                .setAutocomplete(true)
-                .setRequired(required)
-        )
         .addIntegerOption(
             new SlashCommandIntegerOption()
                 .setName(localization.OPTION_STREAM_DURATION.name.default)
@@ -68,6 +59,15 @@ function addStreamOptions(builder, required = false) {
                 .setMinValue(30)
                 .setMaxValue(1380)
                 .setRequired(required)
+        )
+        .addStringOption(
+            new SlashCommandStringOption()
+                .setName(localization.OPTION_STREAM_TIMEZONE.name.default)
+                .setNameLocalizations(localization.OPTION_STREAM_TIMEZONE.name.localization ?? null)
+                .setDescription(localization.OPTION_STREAM_TIMEZONE.description.default)
+                .setDescriptionLocalizations(localization.OPTION_STREAM_TIMEZONE.description.localization ?? null)
+                .setAutocomplete(true)
+                .setRequired(false)
         );
 }
 
@@ -108,6 +108,7 @@ export async function saveTwitchOAuthCode(clientId, clientSecret, redirectUri, u
  * @param {{ clientId: string, clientSecret: string, redirectUri: string, scopes: string }} config.twitch - Twitch configuration.
  * @param {string|string[]} config.token - Token(s) to use for the bot(s).
  * @param {boolean} [config.registerCommands] - Whether to register the commands.
+ * @param {string} [config.timeZone] - Default timezone to apply.
  * @returns {Promise<Client<true>>}
  */
 export default async function (config) {
@@ -134,6 +135,7 @@ export default async function (config) {
                         return;
                     }
 
+                    const subcommand = interaction.options.getSubcommand();
                     const locale = interaction.locale;
 
                     if (interaction.isAutocomplete()) {
@@ -209,7 +211,7 @@ export default async function (config) {
                                     .slice(0, 25)
                                     .map(h => ({ name: h, value: h }))
                             );
-                        } else if (focused.name === localization.OPTION_STREAM_TIMEZONE.name.default) {
+                        } else if (focused.name === localization.OPTION_STREAM_TIMEZONE.name.default || (subcommand === localization.COMMAND_CALENDAR_TIMEZONE.name.default && focused.name === localization.OPTION_STREAM_NEW_TIMEZONE.name.default)) {
                             return interaction.respond(
                                 Intl.supportedValuesOf('timeZone')
                                     .filter(t => t.match(new RegExp(focused.value, 'i')))
@@ -218,7 +220,6 @@ export default async function (config) {
                             );
                         }
                     } else if (interaction.isChatInputCommand()) {
-                        const subcommand = interaction.options.getSubcommand();
                         await interaction.deferReply({ ephemeral: interaction.options.getBoolean(localization.OPTION_STREAM_EPHEMERAL.name.default) !== false });
 
                         const channel = await TwitchChannel.findOne({ guildId: interaction.guildId }).exec();
@@ -257,7 +258,7 @@ export default async function (config) {
 
                                 const option_date = interaction.options.getString(localization.OPTION_STREAM_DATE.name.default);
                                 const option_time = interaction.options.getString(localization.OPTION_STREAM_TIME.name.default);
-                                const option_timezone = interaction.options.getString(localization.OPTION_STREAM_TIMEZONE.name.default);
+                                const option_timezone = interaction.options.getString(localization.OPTION_STREAM_TIMEZONE.name.default) ?? channel.timeZone ?? (config.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone);
                                 if (option_date && option_time && option_timezone) {
                                     body.start_time = localizedDate(`${option_date}T${option_time}Z`, option_timezone);
                                     body.timezone = option_timezone;
@@ -326,6 +327,21 @@ export default async function (config) {
 
                                     return interaction.editReply(getLocalizedText('TEXT_ERROR', locale));
                                 });
+                            case localization.COMMAND_CALENDAR_TIMEZONE.name.default:
+                                const newTimezone = interaction.options.getString(localization.OPTION_STREAM_NEW_TIMEZONE.name.default);
+
+                                if (newTimezone) {
+                                    if (Intl.supportedValuesOf('timeZone').includes(newTimezone)) {
+                                        channel.timeZone = newTimezone;
+                                        await channel.save();
+
+                                        return interaction.editReply(getLocalizedText('TEXT_CHANGED_TIMEZONE', locale).replace('%timeZone%', channel.timeZone));
+                                    }
+
+                                    return interaction.editReply(getLocalizedText('TEXT_ERROR', locale));
+                                } else {
+                                    return interaction.editReply(getLocalizedText('TEXT_CURRENT_TIMEZONE', locale).replace('%timeZone%', channel.timeZone));
+                                }
                         }
                     }
                 })
@@ -407,6 +423,22 @@ export default async function (config) {
                                                 .setNameLocalizations(localization.OPTION_STREAM_EPHEMERAL.name.localization ?? null)
                                                 .setDescription(localization.OPTION_STREAM_EPHEMERAL.description.default)
                                                 .setDescriptionLocalizations(localization.OPTION_STREAM_EPHEMERAL.description.localization ?? null)
+                                                .setRequired(false)
+                                        )
+                                )
+                                .addSubcommand(
+                                    new SlashCommandSubcommandBuilder()
+                                        .setName(localization.COMMAND_CALENDAR_TIMEZONE.name.default)
+                                        .setNameLocalizations(localization.COMMAND_CALENDAR_TIMEZONE.name.localization ?? null)
+                                        .setDescription(localization.COMMAND_CALENDAR_TIMEZONE.description.default)
+                                        .setDescriptionLocalizations(localization.COMMAND_CALENDAR_TIMEZONE.description.localization ?? null)
+                                        .addStringOption(
+                                            new SlashCommandStringOption()
+                                                .setName(localization.OPTION_STREAM_NEW_TIMEZONE.name.default)
+                                                .setNameLocalizations(localization.OPTION_STREAM_NEW_TIMEZONE.name.localization ?? null)
+                                                .setDescription(localization.OPTION_STREAM_NEW_TIMEZONE.description.default)
+                                                .setDescriptionLocalizations(localization.OPTION_STREAM_NEW_TIMEZONE.description.localization ?? null)
+                                                .setAutocomplete(true)
                                                 .setRequired(false)
                                         )
                                 )

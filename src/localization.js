@@ -1,3 +1,13 @@
+const localization_timezone_name = {
+    default: 'timezone',
+    localization: {
+        fr: 'fuseau_horaire',
+        'es-ES': 'zona_horaria',
+        'pt-BR': 'fuso_horário',
+        it: 'fuso_orario'
+    }
+};
+
 const localizations = {
     COMMAND_CALENDAR: {
         name: {
@@ -99,6 +109,18 @@ const localizations = {
             }
         }
     },
+    COMMAND_CALENDAR_TIMEZONE: {
+        name: localization_timezone_name,
+        description: {
+            default: 'Default calendar timezone for future streams.',
+            localization: {
+                fr: 'Fuseau horaire par défaut du calendrier pour les futurs streams',
+                'es-ES': 'Zona horaria de calendario predeterminada para los futuros streams.',
+                'pt-BR': 'Fuso horário de calendário padrão para os futuros streams.',
+                it: 'Fuso orario del calendario predefinito per i futuri streams.'
+            }
+        }
+    },
     OPTION_STREAM_TITLE: {
         name: {
             default: 'title',
@@ -180,15 +202,7 @@ const localizations = {
         }
     },
     OPTION_STREAM_TIMEZONE: {
-        name: {
-            default: 'timezone',
-            localization: {
-                fr: 'fuseau_horaire',
-                'es-ES': 'zona_horaria',
-                'pt-BR': 'fuso_horário',
-                it: 'fuso_orario'
-            }
-        },
+        name: localization_timezone_name,
         description: {
             default: 'Time zone you are setting the date and time for.',
             localization: {
@@ -196,6 +210,26 @@ const localizations = {
                 'es-ES': 'Zona horaria para la que estás configurando la fecha y la hora.',
                 'pt-BR': 'Fuso horário para o qual você está configurando a data e a hora.',
                 it: "Fuso orario per il quale stai impostando la data e l'orario."
+            }
+        }
+    },
+    OPTION_STREAM_NEW_TIMEZONE: {
+        name: {
+            default: 'new',
+            localization: {
+                fr: 'nouveau',
+                'es-ES': 'nuevo',
+                'pt-BR': 'novo',
+                it: 'nuovo'
+            }
+        },
+        description: {
+            default: 'New default timezone for future streams',
+            localization: {
+                fr: 'Nouveau fuseau horaire par défaut pour les futurs streams.',
+                'es-ES': 'Nuevo huso horario predeterminado para los futuros streams.',
+                'pt-BR': 'Novo fuso horário padrão para os futuros streams.',
+                it: 'Nuovo fuso orario predefinito per i futuri streams.'
             }
         }
     },
@@ -334,6 +368,24 @@ const localizations = {
             'es-ES': 'No hay streams programadas aún. ¡Empieza creando una!',
             'pt-BR': 'Nenhum stream está agendado ainda. Comece criando um!',
             it: 'Nessuno stream è ancora programmato. Inizia creando uno!'
+        }
+    },
+    TEXT_CURRENT_TIMEZONE: {
+        default: 'This server default timezone for future streams is set to %timeZone%.',
+        localization: {
+            fr: 'Le fuseau horaire par défaut de ce serveur pour les futurs streams est réglé sur %timeZone%.',
+            'es-ES': 'La zona horaria predeterminada de este servidor para los futuros streams está configurada como %timeZone%.',
+            'pt-BR': 'O fuso horário padrão deste servidor para os futuros streams está definido como %timeZone%.',
+            it: 'Il fuso orario predefinito di questo server per i futuri streams è impostato su %timeZone%.'
+        }
+    },
+    TEXT_CHANGED_TIMEZONE: {
+        default: 'This server default timezone for future streams was changed to %timeZone%.',
+        localization: {
+            fr: 'Le fuseau horaire par défaut de ce serveur pour les futurs streams a été changé en %timeZone%.',
+            'es-ES': 'La zona horaria predeterminada de este servidor para los futuros streams fue cambiada a %timeZone%.',
+            'pt-BR': 'O fuso horário padrão deste servidor para os futuros streams foi alterado para %timeZone%.',
+            it: 'Il fuso orario predefinito di questo server per i futuri streams è stato cambiato in %timeZone%.'
         }
     },
     TEXT_ERROR: {

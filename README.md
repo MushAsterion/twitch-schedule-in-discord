@@ -40,6 +40,7 @@ MONGODB_HOST=""
 MONGODB_DATABASE=""
 
 PORT=2050
+DEFAULT_TIMEZONE="Europe/Dublin"
 ```
 
 It will requires you to [create a Twitch Application](https://dev.twitch.tv/docs/authentication/register-app/), [create a Discord application](https://discord.com/developers/docs/quick-start/getting-started#step-1-creating-an-app) and have a [MongoDB](https://mongodb.com/) server available.
