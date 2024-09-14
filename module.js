@@ -306,11 +306,12 @@ export default async function (config) {
                                         if (response.status === 401 || response.status === 403) {
                                             return interaction.editReply(getLocalizedText('TEXT_NOT_CONNECTED', locale).replaceAll('$url', `${connectUrl}&state=${LZString.compressToBase64(JSON.stringify({ guildId: interaction.guildId }))}`));
                                         } else if (response.status >= 200 && response.status < 300) {
-                                            if (interaction.options.getBoolean(localization.OPTION_STREAM_DISCORD.name.default)) {
-                                                try {
-                                                    const res = await response.json();
-                                                    const linkedEvents = [...(await interaction.guild.scheduledEvents.fetch()).values()].filter(e => e.description.includes(res.data.segments[0].id));
+                                            try {
+                                                const discordOption = interaction.options.getBoolean(localization.OPTION_STREAM_DISCORD.name.default);
+                                                const res = await response.json();
+                                                const linkedEvents = [...(await interaction.guild.scheduledEvents.fetch()).values()].filter(e => e.description.includes(res.data.segments[0].id));
 
+                                                if (discordOption) {
                                                     console.log(res.data.segments[0].start_time, res.data.segments[0].end_time, res.data.segments);
                                                     const eventConfig = {
                                                         entityType: GuildScheduledEventEntityType.External,
@@ -327,9 +328,11 @@ export default async function (config) {
                                                     } else {
                                                         await interaction.guild.scheduledEvents.create(eventConfig);
                                                     }
-                                                } catch (err) {
-                                                    console.error(err);
+                                                } else if (discordOption === false) {
+                                                    await Promise.all(linkedEvents.map(e => e.delete()));
                                                 }
+                                            } catch (err) {
+                                                console.error(err);
                                             }
 
                                             return interaction.editReply(getLocalizedText(subcommand === localization.COMMAND_CALENDAR_CREATE.name.default ? 'TEXT_STREAM_CREATED' : 'TEXT_STREAM_EDITED', locale));
