@@ -1,5 +1,5 @@
 import LZString from 'lz-string';
-import { Client, Events, IntentsBitField, SlashCommandBooleanOption, SlashCommandBuilder, SlashCommandIntegerOption, SlashCommandStringOption, SlashCommandSubcommandBuilder, Locale, PermissionFlagsBits, GuildScheduledEventEntityType, GuildScheduledEventPrivacyLevel, SlashCommandSubcommandGroupBuilder } from 'discord.js';
+import { Client, Events, IntentsBitField, SlashCommandBooleanOption, SlashCommandBuilder, SlashCommandIntegerOption, SlashCommandStringOption, SlashCommandSubcommandBuilder, PermissionFlagsBits, GuildScheduledEventEntityType, GuildScheduledEventPrivacyLevel, SlashCommandSubcommandGroupBuilder } from 'discord.js';
 import mongoose from 'mongoose';
 
 import { getTwitchHeaders, fetchTwitchData, refreshTwitchToken, getSession } from './src/twitch.js';
@@ -125,6 +125,8 @@ export default async function (config) {
     async function getTwitchUserToken(interaction, document) {
         return refreshTwitchToken(config.twitch.clientId, config.twitch.clientSecret, interaction.guildId, document, undefined, config.twitch.redirectUri, TwitchChannel);
     }
+
+    const defaultTimeZone = Intl.supportedValuesOf('timeZone').includes(config.timeZone) ? config.timeZone : Intl.DateTimeFormat().resolvedOptions().timeZone;
 
     return Promise.all(
         (config.token instanceof Array ? config.token : [config.token]).map(async token => {
@@ -265,7 +267,7 @@ export default async function (config) {
 
                                     const option_date = interaction.options.getString(localization.OPTION_STREAM_DATE.name.default);
                                     const option_time = interaction.options.getString(localization.OPTION_STREAM_TIME.name.default);
-                                    const option_timezone = interaction.options.getString(localization.OPTION_STREAM_TIMEZONE.name.default) ?? channel.timeZone ?? (config.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone);
+                                    const option_timezone = interaction.options.getString(localization.OPTION_STREAM_TIMEZONE.name.default) ?? channel.timeZone ?? defaultTimeZone;
                                     if (option_date && option_time && option_timezone) {
                                         body.start_time = localizedDate(`${option_date}T${option_time}Z`, option_timezone);
                                         body.timezone = option_timezone;
@@ -378,13 +380,13 @@ export default async function (config) {
 
                                         return interaction.editReply(getLocalizedText('TEXT_ERROR', locale));
                                     } else if (resetTimezone) {
-                                        channel.timeZone = config.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+                                        channel.timeZone = defaultTimeZone;
                                         await channel.save();
 
                                         return interaction.editReply(getLocalizedText('TEXT_CHANGED_TIMEZONE', locale).replace('%timeZone%', channel.timeZone));
-                                    } else {
-                                        return interaction.editReply(getLocalizedText('TEXT_CURRENT_TIMEZONE', locale).replace('%timeZone%', channel.timeZone ?? (config.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone)));
                                     }
+
+                                    return interaction.editReply(getLocalizedText('TEXT_CURRENT_TIMEZONE', locale).replace('%timeZone%', channel.timeZone ?? defaultTimeZone));
                             }
                         }
                     } catch (err) {
