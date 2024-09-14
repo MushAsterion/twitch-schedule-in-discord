@@ -268,7 +268,7 @@ export default async function (config) {
                                 if (option_date && option_time && option_timezone) {
                                     body.start_time = localizedDate(`${option_date}T${option_time}Z`, option_timezone);
                                     body.timezone = option_timezone;
-                                } else if (option_date || option_time || option_timezone) {
+                                } else if (option_date || option_time) {
                                     return interaction.editReply(getLocalizedText('TEXT_TIME_INCOMPLETE', locale));
                                 }
 
