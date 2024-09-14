@@ -1,5 +1,5 @@
 import LZString from 'lz-string';
-import { Client, Events, IntentsBitField, SlashCommandBooleanOption, SlashCommandBuilder, SlashCommandIntegerOption, SlashCommandStringOption, SlashCommandSubcommandBuilder, Locale, PermissionFlagsBits, GuildScheduledEventEntityType, GuildScheduledEventPrivacyLevel } from 'discord.js';
+import { Client, Events, IntentsBitField, SlashCommandBooleanOption, SlashCommandBuilder, SlashCommandIntegerOption, SlashCommandStringOption, SlashCommandSubcommandBuilder, Locale, PermissionFlagsBits, GuildScheduledEventEntityType, GuildScheduledEventPrivacyLevel, SlashCommandSubcommandGroupBuilder } from 'discord.js';
 import mongoose from 'mongoose';
 
 import { getTwitchHeaders, fetchTwitchData, refreshTwitchToken, getSession } from './src/twitch.js';
@@ -212,7 +212,7 @@ export default async function (config) {
                                         .slice(0, 25)
                                         .map(h => ({ name: h, value: h }))
                                 );
-                            } else if (focused.name === localization.OPTION_STREAM_TIMEZONE.name.default || (subcommand === localization.COMMAND_CALENDAR_TIMEZONE.name.default && focused.name === localization.OPTION_STREAM_NEW_TIMEZONE.name.default)) {
+                            } else if (focused.name === localization.OPTION_STREAM_TIMEZONE.name.default || (subcommand === localization.COMMAND_CALENDAR_SETTINGS_TIMEZONE.name.default && focused.name === localization.OPTION_STREAM_NEW_TIMEZONE.name.default)) {
                                 return interaction.respond(
                                     Intl.supportedValuesOf('timeZone')
                                         .filter(t => t.match(new RegExp(focused.value, 'i')))
@@ -364,7 +364,7 @@ export default async function (config) {
 
                                         return interaction.editReply(getLocalizedText('TEXT_ERROR', locale));
                                     });
-                                case localization.COMMAND_CALENDAR_TIMEZONE.name.default:
+                                case localization.COMMAND_CALENDAR_SETTINGS_TIMEZONE.name.default:
                                     const newTimezone = interaction.options.getString(localization.OPTION_STREAM_NEW_TIMEZONE.name.default);
 
                                     if (newTimezone) {
@@ -488,20 +488,27 @@ export default async function (config) {
                                                 .setRequired(false)
                                         )
                                 )
-                                .addSubcommand(
-                                    new SlashCommandSubcommandBuilder()
-                                        .setName(localization.COMMAND_CALENDAR_TIMEZONE.name.default)
-                                        .setNameLocalizations(localization.COMMAND_CALENDAR_TIMEZONE.name.localization ?? null)
-                                        .setDescription(localization.COMMAND_CALENDAR_TIMEZONE.description.default)
-                                        .setDescriptionLocalizations(localization.COMMAND_CALENDAR_TIMEZONE.description.localization ?? null)
-                                        .addStringOption(
-                                            new SlashCommandStringOption()
-                                                .setName(localization.OPTION_STREAM_NEW_TIMEZONE.name.default)
-                                                .setNameLocalizations(localization.OPTION_STREAM_NEW_TIMEZONE.name.localization ?? null)
-                                                .setDescription(localization.OPTION_STREAM_NEW_TIMEZONE.description.default)
-                                                .setDescriptionLocalizations(localization.OPTION_STREAM_NEW_TIMEZONE.description.localization ?? null)
-                                                .setAutocomplete(true)
-                                                .setRequired(false)
+                                .addSubcommandGroup(
+                                    new SlashCommandSubcommandGroupBuilder()
+                                        .setName(localization.COMMAND_CALENDAR_SETTINGS.name.default)
+                                        .setNameLocalizations(localization.COMMAND_CALENDAR_SETTINGS.name.localization ?? null)
+                                        .setDescription(localization.COMMAND_CALENDAR_SETTINGS.description.default)
+                                        .setDescriptionLocalizations(localization.COMMAND_CALENDAR_SETTINGS.description.localization ?? null)
+                                        .addSubcommand(
+                                            new SlashCommandSubcommandBuilder()
+                                                .setName(localization.COMMAND_CALENDAR_SETTINGS_TIMEZONE.name.default)
+                                                .setNameLocalizations(localization.COMMAND_CALENDAR_SETTINGS_TIMEZONE.name.localization ?? null)
+                                                .setDescription(localization.COMMAND_CALENDAR_SETTINGS_TIMEZONE.description.default)
+                                                .setDescriptionLocalizations(localization.COMMAND_CALENDAR_SETTINGS_TIMEZONE.description.localization ?? null)
+                                                .addStringOption(
+                                                    new SlashCommandStringOption()
+                                                        .setName(localization.OPTION_STREAM_NEW_TIMEZONE.name.default)
+                                                        .setNameLocalizations(localization.OPTION_STREAM_NEW_TIMEZONE.name.localization ?? null)
+                                                        .setDescription(localization.OPTION_STREAM_NEW_TIMEZONE.description.default)
+                                                        .setDescriptionLocalizations(localization.OPTION_STREAM_NEW_TIMEZONE.description.localization ?? null)
+                                                        .setAutocomplete(true)
+                                                        .setRequired(false)
+                                                )
                                         )
                                 )
                                 .setDMPermission(false)

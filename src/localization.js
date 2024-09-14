@@ -143,7 +143,27 @@ const localizations = {
         },
         description: localization_calendar_list_description
     },
-    COMMAND_CALENDAR_TIMEZONE: {
+    COMMAND_CALENDAR_SETTINGS: {
+        name: {
+            default: 'settings',
+            localization: {
+                fr: 'paramètres',
+                'es-ES': 'configuración',
+                'pt-BR': 'configurações',
+                it: 'impostazioni'
+            }
+        },
+        description: {
+            default: 'View and manage settings.',
+            localization: {
+                fr: 'Afficher et gérer les paramètres.',
+                'es-ES': 'Ver y gestionar la configuración.',
+                'pt-BR': 'Visualizar e gerenciar configurações.',
+                it: 'Visualizzare e gestire le impostazioni.'
+            }
+        }
+    },
+    COMMAND_CALENDAR_SETTINGS_TIMEZONE: {
         name: localization_timezone_name,
         description: {
             default: 'Default calendar timezone for future streams.',
