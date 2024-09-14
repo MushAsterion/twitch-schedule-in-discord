@@ -9,6 +9,14 @@ const schema = new mongoose.Schema({
         type: mongoose.SchemaTypes.String,
         required: false
     },
+    changeChannel: {
+        type: mongoose.SchemaTypes.String,
+        required: false
+    },
+    changeLanguage: {
+        type: mongoose.SchemaTypes.String,
+        required: false
+    },
     twitchId: {
         type: mongoose.SchemaTypes.String,
         required: true

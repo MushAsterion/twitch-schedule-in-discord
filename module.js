@@ -1,5 +1,5 @@
 import LZString from 'lz-string';
-import { Client, Events, IntentsBitField, SlashCommandBooleanOption, SlashCommandBuilder, SlashCommandIntegerOption, SlashCommandStringOption, SlashCommandSubcommandBuilder, PermissionFlagsBits, GuildScheduledEventEntityType, GuildScheduledEventPrivacyLevel, SlashCommandSubcommandGroupBuilder } from 'discord.js';
+import { Client, Events, IntentsBitField, SlashCommandBooleanOption, SlashCommandBuilder, SlashCommandIntegerOption, SlashCommandStringOption, SlashCommandSubcommandBuilder, PermissionFlagsBits, GuildScheduledEventEntityType, GuildScheduledEventPrivacyLevel, SlashCommandSubcommandGroupBuilder, SlashCommandChannelOption, EmbedBuilder, Colors } from 'discord.js';
 import mongoose from 'mongoose';
 
 import { getTwitchHeaders, fetchTwitchData, refreshTwitchToken } from './src/twitch.js';
@@ -98,6 +98,42 @@ export async function saveTwitchOAuthCode(clientId, clientSecret, redirectUri, u
     } catch (err) {
         console.error(err);
         return false;
+    }
+}
+
+function segmentToString(segment, locale) {
+    return `**${segment.title}**\n_${getLocalizedText('LABEL_DATE', locale)} <t:${Math.floor(new Date(segment.start_time) / 1000)}:f> - <t:${Math.floor(new Date(segment.end_time) / 1000)}:f> (<t:${Math.floor(new Date(segment.start_time) / 1000)}:R>)_\n_${getLocalizedText('LABEL_GAME', locale)} ${segment.category?.name ?? getLocalizedText('TEXT_NONE', locale)}_`;
+}
+
+/**
+ *
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction
+ * @param {import('./src/schema/TwitchChannel.js').default} channel
+ * @param {object} segment
+ */
+async function sendChange(interaction, channel, segment) {
+    try {
+        if (!channel.changeChannel) {
+            return;
+        }
+
+        const locale = channel.changeLanguage || interaction.guildLocale;
+        const subcommand = interaction.options.getSubcommand();
+
+        /** @type {import('discord.js').TextChannel} */
+        const changeChannel = await interaction.guild.channels.fetch(channel.changeChannel);
+        changeChannel.send({
+            embeds: [
+                new EmbedBuilder()
+                    .setTitle(getLocalizedText(subcommand === localization.COMMAND_CALENDAR_DELETE.name.default ? 'TEXT_STREAM_CHANGE_DELETED' : subcommand === localization.COMMAND_CALENDAR_CREATE.name.default ? 'TEXT_STREAM_CHANGE_CREATED' : 'TEXT_STREAM_CHANGE_EDITED', locale))
+                    .setColor(subcommand === localization.COMMAND_CALENDAR_DELETE.name.default ? Colors.Red : subcommand === localization.COMMAND_CALENDAR_CREATE.name.default ? Colors.Green : Colors.Orange)
+                    .setDescription(segmentToString(segment, locale))
+                    .setAuthor({ name: interaction.member.displayName, iconURL: interaction.member.displayAvatarURL() })
+                    .setTimestamp(Date.now())
+            ]
+        });
+    } catch (err) {
+        console.error(err);
     }
 }
 
@@ -239,7 +275,7 @@ export default async function (config) {
                                 case localization.COMMAND_SCHEDULE.name.default:
                                 case localization.COMMAND_CALENDAR_LIST.name.default:
                                     return fetchTwitchData(schedule => schedule.data?.segments, `https://api.twitch.tv/helix/schedule?broadcaster_id=${channel.twitchId}&start_time=${new Date().toISOString()}&first=25`, { headers: await getTwitchHeaders(config.twitch.clientId, config.twitch.clientSecret, await getTwitchUserToken(interaction, channel)) }, 2)
-                                        .then(streams => streams.map(stream => `**${stream.title}**\n_${getLocalizedText('LABEL_DATE', locale)} <t:${Math.floor(new Date(stream.start_time) / 1000)}:f> - <t:${Math.floor(new Date(stream.end_time) / 1000)}:f> (<t:${Math.floor(new Date(stream.start_time) / 1000)}:R>)_\n_${getLocalizedText('LABEL_GAME', locale)} ${stream.category?.name ?? getLocalizedText('TEXT_NONE', locale)}_`))
+                                        .then(streams => streams.map(stream => segmentToString(stream, locale)))
                                         .then(streams =>
                                             interaction.editReply(
                                                 streams.length
@@ -308,9 +344,10 @@ export default async function (config) {
                                         if (response.status === 401 || response.status === 403) {
                                             return interaction.editReply(getLocalizedText('TEXT_NOT_CONNECTED', locale).replaceAll('$url', `${connectUrl}&state=${LZString.compressToBase64(JSON.stringify({ guildId: interaction.guildId }))}`));
                                         } else if (response.status >= 200 && response.status < 300) {
+                                            const res = await response.json();
+
                                             try {
                                                 const discordOption = interaction.options.getBoolean(localization.OPTION_STREAM_DISCORD.name.default);
-                                                const res = await response.json();
                                                 const linkedEvents = [...(await interaction.guild.scheduledEvents.fetch()).values()].filter(e => e.description.includes(res.data.segments[0].id));
 
                                                 if (discordOption) {
@@ -337,6 +374,7 @@ export default async function (config) {
                                                 console.error(err);
                                             }
 
+                                            await sendChange(interaction, channel, res.data.segments[0]);
                                             return interaction.editReply(getLocalizedText(subcommand === localization.COMMAND_CALENDAR_CREATE.name.default ? 'TEXT_STREAM_CREATED' : 'TEXT_STREAM_EDITED', locale));
                                         } else {
                                             console.error(response.statusText);
@@ -349,12 +387,17 @@ export default async function (config) {
                                         }
                                     });
                                 case localization.COMMAND_CALENDAR_DELETE.name.default:
+                                    const segmentRes = await fetch(`https://api.twitch.tv/helix/schedule?broadcaster_id=${channel.twitchId}&id=${segmentId}`, { headers: await getTwitchHeaders(config.twitch.clientId, config.twitch.clientSecret, await getTwitchUserToken(interaction, channel)) })
+                                        .then(res => res.json())
+                                        .catch(() => undefined);
+
                                     return fetch(`https://api.twitch.tv/helix/schedule/segment?broadcaster_id=${channel.twitchId}&id=${segmentId}`, {
                                         method: 'DELETE',
                                         headers: await getTwitchHeaders(config.twitch.clientId, config.twitch.clientSecret, await getTwitchUserToken(interaction, channel))
                                     }).then(async response => {
                                         if (response.status >= 200 && response.status < 300) {
                                             await Promise.all([...(await interaction.guild.scheduledEvents.fetch()).values()].filter(e => e.description.includes(segmentId)).map(e => e.delete())).catch(console.error);
+                                            await sendChange(interaction, channel, segmentRes?.data?.segments?.[0]);
                                             return interaction.editReply(getLocalizedText('TEXT_STREAM_DELETED', locale));
                                         }
 
@@ -387,6 +430,59 @@ export default async function (config) {
                                     }
 
                                     return interaction.editReply(getLocalizedText('TEXT_CURRENT_TIMEZONE', locale).replace('%timeZone%', channel.timeZone ?? defaultTimeZone));
+                                case localization.COMMAND_CALENDAR_SETTINGS_CHANGECHANNEL.name.default:
+                                    const newChannel = interaction.options.getChannel(localization.OPTION_STREAM_NEW_CHANGECHANNEL.name.default);
+                                    const newLanguage = interaction.options.getString(localization.OPTION_LOCALE.name.default);
+                                    const resetChannel = interaction.options.getBoolean(localization.OPTION_STREAM_RESET_CHANGECHANNEL.name.default);
+
+                                    if (newChannel) {
+                                        if (!newChannel?.isTextBased() || !newChannel.permissionsFor(interaction.guild.members.me).has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages])) {
+                                            return interaction.editReply(
+                                                getLocalizedText('TEXT_NOACCESS_CHANGECHANNEL', locale)
+                                                    .replaceAll('%changeChannel%', newChannel)
+                                                    .replaceAll('%changeLanguage%', getLocalizedText(localization[`LANGUAGE_${newLanguage}`] || localization[`LANGUAGE_${newLanguage}`] ? `LANGUAGE_${newLanguage}` : 'LANGUAGE_en', locale))
+                                            );
+                                        }
+
+                                        channel.changeChannel = newChannel.id;
+
+                                        if (typeof newLanguage === 'string') {
+                                            channel.changeLanguage = newLanguage;
+                                        }
+
+                                        await channel.save();
+
+                                        return interaction.editReply(
+                                            getLocalizedText('TEXT_CHANGED_CHANGECHANNEL', locale)
+                                                .replaceAll('%changeChannel%', `<#${channel.changeChannel}>`)
+                                                .replaceAll('%changeLanguage%', getLocalizedText(localization[`LANGUAGE_${channel.changeLanguage}`] || localization[`LANGUAGE_${channel.changeLanguage}`] ? `LANGUAGE_${channel.changeLanguage}` : 'LANGUAGE_en', locale))
+                                        );
+                                    } else if (newLanguage) {
+                                        channel.changeLanguage = newLanguage;
+                                        await channel.save();
+
+                                        return interaction.editReply(
+                                            getLocalizedText('TEXT_CHANGED_CHANGECHANNEL', locale)
+                                                .replaceAll('%changeChannel%', `<#${channel.changeChannel}>`)
+                                                .replaceAll('%changeLanguage%', getLocalizedText(localization[`LANGUAGE_${channel.changeLanguage}`] || localization[`LANGUAGE_${channel.changeLanguage}`] ? `LANGUAGE_${channel.changeLanguage}` : 'LANGUAGE_en', locale))
+                                        );
+                                    } else if (resetChannel) {
+                                        channel.changeChannel = null;
+                                        delete channel.changeChannel;
+                                        await channel.save();
+
+                                        return interaction.editReply(
+                                            getLocalizedText('TEXT_CHANGED_NO_CHANGECHANNEL', locale)
+                                                .replaceAll('%changeChannel%', `<#${channel.changeChannel}>`)
+                                                .replaceAll('%changeLanguage%', getLocalizedText(localization[`LANGUAGE_${channel.changeLanguage}`] || localization[`LANGUAGE_${channel.changeLanguage}`] ? `LANGUAGE_${channel.changeLanguage}` : 'LANGUAGE_en', locale))
+                                        );
+                                    }
+
+                                    return interaction.editReply(
+                                        getLocalizedText(channel.changeChannel ? 'TEXT_CURRENT_CHANGECHANNEL' : 'TEXT_NOCURRENT_CHANGECHANNEL', locale)
+                                            .replaceAll('%changeChannel%', `<#${channel.changeChannel}>`)
+                                            .replaceAll('%changeLanguage%', getLocalizedText(localization[`LANGUAGE_${channel.changeLanguage}`] || localization[`LANGUAGE_${channel.changeLanguage}`] ? `LANGUAGE_${channel.changeLanguage}` : 'LANGUAGE_en', locale))
+                                    );
                             }
                         }
                     } catch (err) {
@@ -523,6 +619,38 @@ export default async function (config) {
                                                         .setNameLocalizations(localization.OPTION_STREAM_RESET_TIMEZONE.name.localization ?? null)
                                                         .setDescription(localization.OPTION_STREAM_RESET_TIMEZONE.description.default)
                                                         .setDescriptionLocalizations(localization.OPTION_STREAM_RESET_TIMEZONE.description.localization ?? null)
+                                                        .setRequired(false)
+                                                )
+                                        )
+                                        .addSubcommand(
+                                            new SlashCommandSubcommandBuilder()
+                                                .setName(localization.COMMAND_CALENDAR_SETTINGS_CHANGECHANNEL.name.default)
+                                                .setNameLocalizations(localization.COMMAND_CALENDAR_SETTINGS_CHANGECHANNEL.name.localization ?? null)
+                                                .setDescription(localization.COMMAND_CALENDAR_SETTINGS_CHANGECHANNEL.description.default)
+                                                .setDescriptionLocalizations(localization.COMMAND_CALENDAR_SETTINGS_TIMEZONE.description.localization ?? null)
+                                                .addChannelOption(
+                                                    new SlashCommandChannelOption()
+                                                        .setName(localization.OPTION_STREAM_NEW_CHANGECHANNEL.name.default)
+                                                        .setNameLocalizations(localization.OPTION_STREAM_NEW_CHANGECHANNEL.name.localization ?? null)
+                                                        .setDescription(localization.OPTION_STREAM_NEW_CHANGECHANNEL.description.default)
+                                                        .setDescriptionLocalizations(localization.OPTION_STREAM_NEW_CHANGECHANNEL.description.localization ?? null)
+                                                        .setRequired(false)
+                                                )
+                                                .addStringOption(
+                                                    new SlashCommandStringOption()
+                                                        .setName(localization.OPTION_LOCALE.name.default)
+                                                        .setNameLocalizations(localization.OPTION_LOCALE.name.localization ?? null)
+                                                        .setDescription(localization.OPTION_LOCALE.description.default)
+                                                        .setDescriptionLocalizations(localization.OPTION_LOCALE.description.localization ?? null)
+                                                        .setChoices(localization.OPTION_LOCALE.options ?? [])
+                                                        .setRequired(false)
+                                                )
+                                                .addBooleanOption(
+                                                    new SlashCommandBooleanOption()
+                                                        .setName(localization.OPTION_STREAM_RESET_CHANGECHANNEL.name.default)
+                                                        .setNameLocalizations(localization.OPTION_STREAM_RESET_CHANGECHANNEL.name.localization ?? null)
+                                                        .setDescription(localization.OPTION_STREAM_RESET_CHANGECHANNEL.description.default)
+                                                        .setDescriptionLocalizations(localization.OPTION_STREAM_RESET_CHANGECHANNEL.description.localization ?? null)
                                                         .setRequired(false)
                                                 )
                                         )

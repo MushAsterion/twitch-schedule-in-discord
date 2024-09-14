@@ -1,3 +1,51 @@
+const localization_languages = {
+    en: {
+        default: 'English',
+        localization: {
+            fr: 'Anglais',
+            'es-ES': 'Inglés',
+            'pt-BR': 'Inglês',
+            it: 'Inglese'
+        }
+    },
+    fr: {
+        default: 'French',
+        localization: {
+            fr: 'Français',
+            'es-ES': 'Francés',
+            'pt-BR': 'Francês',
+            it: 'Francese'
+        }
+    },
+    'es-ES': {
+        default: 'Spanish',
+        localization: {
+            fr: 'Espagnol',
+            'es-ES': 'Español',
+            'pt-BR': 'Espanhol',
+            it: 'Spagnolo'
+        }
+    },
+    'pt-BR': {
+        default: 'Portuguese',
+        localization: {
+            fr: 'Portugais',
+            'es-ES': 'Portugués',
+            'pt-BR': 'Português',
+            it: 'Portoghese'
+        }
+    },
+    it: {
+        default: 'Italian',
+        localization: {
+            fr: 'Italien',
+            'es-ES': 'Italiano',
+            'pt-BR': 'Italiano',
+            it: 'Italiano'
+        }
+    }
+};
+
 const localization_timezone_name = {
     default: 'timezone',
     localization: {
@@ -195,6 +243,51 @@ const localizations = {
             }
         }
     },
+    COMMAND_CALENDAR_SETTINGS_CHANGECHANNEL: {
+        name: {
+            default: 'changes_channel',
+            localization: {
+                fr: 'canal_des_modifications',
+                'es-ES': 'canal_de_cambios',
+                'pt-BR': 'canal_de_alteracoes',
+                it: 'canale_delle_modifiche'
+            }
+        },
+        description: {
+            default: 'Channel to receive changes updates in.',
+            localization: {
+                fr: 'Canal pour recevoir les mises à jour des modifications.',
+                'es-ES': 'Canal para recibir actualizaciones de cambios.',
+                'pt-BR': 'Canal para receber atualizações de alterações.',
+                it: 'Canale per ricevere aggiornamenti delle modifiche.'
+            }
+        }
+    },
+    OPTION_LOCALE: {
+        name: {
+            default: 'language',
+            localization: {
+                fr: 'langue',
+                'es-ES': 'idioma',
+                'pt-BR': 'idioma',
+                it: 'lingua'
+            }
+        },
+        description: {
+            default: 'Language for new messages.',
+            localization: {
+                fr: 'Langue pour les nouveaux messages.',
+                'es-ES': 'Idioma para nuevos mensajes.',
+                'pt-BR': 'Idioma para novas mensagens.',
+                it: 'Lingua per nuovi messaggi.'
+            }
+        },
+        options: Object.entries(localization_languages).map(e => ({
+            name: e[1].default,
+            name_localizations: e[1].localization,
+            value: e[0]
+        }))
+    },
     OPTION_STREAM_TITLE: {
         name: {
             default: 'title',
@@ -308,6 +401,30 @@ const localizations = {
                 'es-ES': 'Restablecer el huso horario predeterminado para los futuros streams.',
                 'pt-BR': 'Redefinir o fuso horário padrão para os futuros streams.',
                 it: 'Reimpostare il fuso orario predefinito per i futuri streams.'
+            }
+        }
+    },
+    OPTION_STREAM_NEW_CHANGECHANNEL: {
+        name: localization_new_name,
+        description: {
+            default: 'New default channel for changes to be logged in.',
+            localization: {
+                fr: 'Nouveau canal par défaut pour enregistrer les modifications.',
+                'es-ES': 'Nuevo canal predeterminado para registrar cambios.',
+                'pt-BR': 'Novo canal padrão para registrar alterações.',
+                it: 'Nuovo canale predefinito per registrare le modifiche.'
+            }
+        }
+    },
+    OPTION_STREAM_RESET_CHANGECHANNEL: {
+        name: localization_reset_name,
+        description: {
+            default: 'Reset change channel. Changes will stop being logged on.',
+            localization: {
+                fr: 'Réinitialiser le canal de changement. Les modifications ne seront plus enregistrées.',
+                'es-ES': 'Restablecer el canal de cambio. Los cambios dejarán de ser registrados.',
+                'pt-BR': 'Redefinir o canal de alteração. As alterações deixarão de ser registradas.',
+                it: 'Reimpostare il canale di modifica. Le modifiche non saranno più registrate.'
             }
         }
     },
@@ -460,6 +577,33 @@ const localizations = {
             it: 'Lo stream è stato eliminato con successo.'
         }
     },
+    TEXT_STREAM_CHANGE_CREATED: {
+        default: 'New stream',
+        localization: {
+            fr: 'Stream créé',
+            'es-ES': 'Stream creado',
+            'pt-BR': 'Stream criado',
+            it: 'Stream creato'
+        }
+    },
+    TEXT_STREAM_CHANGE_EDITED: {
+        default: 'Edited stream',
+        localization: {
+            fr: 'Stream édité',
+            'es-ES': 'Stream editado',
+            'pt-BR': 'Stream editado',
+            it: 'Stream modificato'
+        }
+    },
+    TEXT_STREAM_CHANGE_DELETED: {
+        default: 'Deleted stream',
+        localization: {
+            fr: 'Stream supprimé',
+            'es-ES': 'Stream eliminado',
+            'pt-BR': 'Stream deletado',
+            it: 'Stream cancellato'
+        }
+    },
     TEXT_NO_STREAMS: {
         default: `${localization_text_no_streams_public.default} Start by creating one!`,
         localization: {
@@ -486,6 +630,51 @@ const localizations = {
             'es-ES': 'La zona horaria predeterminada de este servidor para los futuros streams fue cambiada a %timeZone%.',
             'pt-BR': 'O fuso horário padrão deste servidor para os futuros streams foi alterado para %timeZone%.',
             it: 'Il fuso orario predefinito di questo server per i futuri streams è stato cambiato in %timeZone%.'
+        }
+    },
+    TEXT_NOCURRENT_CHANGECHANNEL: {
+        default: 'Changes are not being sent to any channel.',
+        localization: {
+            fr: 'Les modifications ne sont envoyées à aucun canal.',
+            'es-ES': 'Los cambios no se están enviando a ningún canal.',
+            'pt-BR': 'As alterações não estão sendo enviadas para nenhum canal.',
+            it: 'Le modifiche non vengono inviate a nessun canale.'
+        }
+    },
+    TEXT_CURRENT_CHANGECHANNEL: {
+        default: 'Changes will be sent to %changeChannel% in %changeLanguage%.',
+        localization: {
+            fr: 'Les modifications seront envoyées dans %changeChannel% en %changeLanguage%..',
+            'es-ES': 'Los cambios serán enviados a %changeChannel% en %changeLanguage%.',
+            'pt-BR': 'As alterações serão enviadas para %changeChannel% em %changeLanguage%.',
+            it: 'Le modifiche saranno inviate a %changeChannel% in %changeLanguage%.'
+        }
+    },
+    TEXT_CHANGED_CHANGECHANNEL: {
+        default: 'Changes will now be sent to %changeChannel% in %changeLanguage%.',
+        localization: {
+            fr: 'Les modifications seront désormais envoyées dans %changeChannel% en %changeLanguage%.',
+            'es-ES': 'Los cambios se enviarán ahora a %changeChannel% en %changeLanguage%.',
+            'pt-BR': 'As alterações serão enviadas agora para %changeChannel% em %changeLanguage%.',
+            it: 'Le modifiche saranno ora inviate a %changeChannel% in %changeLanguage%.'
+        }
+    },
+    TEXT_CHANGED_NO_CHANGECHANNEL: {
+        default: 'Changes are not going to be sent to any channel anymore.',
+        localization: {
+            fr: 'Les modifications ne seront plus envoyées à aucun canal.',
+            'es-ES': 'Los cambios no se enviarán más a ningún canal.',
+            'pt-BR': 'As alterações não serão mais enviadas para nenhum canal.',
+            it: 'Le modifiche non saranno più inviate a nessun canale.'
+        }
+    },
+    TEXT_NOACCESS_CHANGECHANNEL: {
+        default: 'Bot has not access to %changeChannel%, make sure to grant it permissions so it can both view and send messages to it.',
+        localization: {
+            fr: "Le bot n'a pas accès à %changeChannel%, assurez-vous de lui accorder les autorisations nécessaires pour qu'il puisse afficher et envoyer des messages dedans.",
+            'es-ES': 'El bot no tiene acceso a %changeChannel%, asegúrate de otorgarle los permisos necesarios para que pueda ver y enviar mensajes en él.',
+            'pt-BR': 'O bot não tem acesso ao %changeChannel%, certifique-se de conceder as permissões necessárias para que ele possa visualizar e enviar mensagens nele.',
+            it: 'Il bot non ha accesso a %changeChannel%, assicurati di concedergli le autorizzazioni necessarie affinché possa visualizzare e inviare messaggi al suo interno.'
         }
     },
     TEXT_ERROR: {
@@ -532,7 +721,8 @@ const localizations = {
             'pt-BR': 'Nenhum',
             it: 'Nessuno'
         }
-    }
+    },
+    ...Object.fromEntries(Object.entries(localization_languages).map(e => [`LANGUAGE_${e[0]}`, e[1]]))
 };
 
 /**
