@@ -398,12 +398,12 @@ const localizations = {
         }
     },
     TEXT_TIME_INCOMPLETE: {
-        default: 'Date, time and timezone fields all come together. Please make sure to use the three (3) to have it working.',
+        default: 'Date and time fields come together. Please make sure to use the two (2) to have it working.',
         localization: {
-            fr: "Les options de date, horaire et fuseau horaire sont liées. Veuillez vous assurer d'indiquer les trois (3) pour que cela fonctionne.",
-            'es-ES': 'Los campos de fecha, hora y zona horaria van juntos. Por favor, asegúrate de usar los tres (3) para que funcione.',
-            'pt-BR': 'Os campos de data, hora e fuso horário devem ser preenchidos. Por favor, certifique-se de usar os três (3) para que funcione.',
-            it: 'I campi data, orario e fuso orario vanno usati insieme. Assicurati di utilizzarli tutti e tre (3) per farlo funzionare.'
+            fr: "Les options de date, horaire et fuseau horaire sont liées. Veuillez vous assurer d'indiquer les deux (2) pour que cela fonctionne.",
+            'es-ES': 'Los campos de fecha y hora van juntos. Por favor, asegúrate de usar los dos (2) para que funcione.',
+            'pt-BR': 'Os campos de data e hora ser preenchidos. Por favor, certifique-se de usar os dois (2) para que funcione.',
+            it: 'I campi data e orario vanno usati insieme. Assicurati di utilizzarli tutti e due (2) per farlo funzionare.'
         }
     },
     LABEL_DATE: {
