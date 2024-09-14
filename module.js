@@ -130,209 +130,229 @@ export default async function (config) {
         (config.token instanceof Array ? config.token : [config.token]).map(async token => {
             const client = new Client({ intents: [IntentsBitField.Flags.Guilds] })
                 .on(Events.InteractionCreate, async interaction => {
-                    const commandName = interaction.commandName;
-                    if (commandName !== localization.COMMAND_CALENDAR.name.default && commandName !== localization.COMMAND_SCHEDULE.name.default) {
-                        return;
-                    }
-
-                    const subcommand = commandName === localization.COMMAND_SCHEDULE.name.default ? commandName : interaction.options.getSubcommand();
                     const locale = interaction.locale;
 
-                    if (interaction.isAutocomplete()) {
-                        const focused = interaction.options.getFocused(true);
-
-                        if (focused.name === localization.OPTION_STREAM_GAME.name.default) {
-                            const twitch_headers = await getTwitchHeaders(config.twitch.clientId, config.twitch.clientSecret);
-
-                            return fetch('https://api.igdb.com/v4/games', {
-                                method: 'POST',
-                                headers: twitch_headers,
-                                body: `search "${focused.value}";fields id;limit 100;`
-                            })
-                                .then(response => response.json())
-                                .then(igdbGames =>
-                                    igdbGames?.length
-                                        ? fetch(`https://api.twitch.tv/helix/games?${igdbGames.map(game => `igdb_id=${game.id}`).join('&')}`, { headers: twitch_headers })
-                                              .then(response => response.json())
-                                              .then(games =>
-                                                  interaction.respond(
-                                                      sortByRelevance(games?.data ?? [], focused.value, 'name')
-                                                          .slice(0, 25)
-                                                          .map(game => ({
-                                                              name: game.name,
-                                                              value: game.id
-                                                          }))
-                                                  )
-                                              )
-                                        : interaction.respond([])
-                                );
-                        } else if (focused.name === localization.OPTION_STREAM_STREAM.name.default) {
-                            const channel = await TwitchChannel.findOne({ guildId: interaction.guildId }).exec();
-
-                            if (!channel) {
-                                return interaction.respond([]);
-                            }
-
-                            return interaction.respond(
-                                (await fetchTwitchData(schedule => schedule.data?.segments, `https://api.twitch.tv/helix/schedule?broadcaster_id=${channel.twitchId}&start_time=${new Date().toISOString()}&first=25`, { headers: await getTwitchHeaders(config.twitch.clientId, config.twitch.clientSecret) }, 2))
-                                    .map(segment => ({
-                                        name: `${segment.title.slice(0, 60)}${segment.title.length > 60 ? '...' : ''} (${new Date(segment.start_time).toLocaleDateString(locale, {
-                                            hour: '2-digit',
-                                            minute: '2-digit'
-                                        })})`,
-                                        value: LZString.compressToUTF16(segment.id)
-                                    }))
-                                    .filter(choice => choice.name.match(new RegExp(`${focused.value}`, 'gi')))
-                                    .slice(0, 25)
-                            );
-                        } else if (focused.name === localization.OPTION_STREAM_DATE.name.default) {
-                            return interaction.respond(
-                                new Array(365)
-                                    .fill(undefined)
-                                    .map((_, i) => {
-                                        const date = new Date();
-                                        date.setDate(date.getDate() + i);
-
-                                        return {
-                                            name: `${date.toLocaleDateString(locale)} (${date.toLocaleDateString(locale, { dateStyle: 'long' })})`,
-                                            value: date.toISOString().slice(0, 10)
-                                        };
-                                    })
-                                    .filter(d => d.name.match(focused.value) || d.value.match(focused.value))
-                                    .slice(0, 25)
-                            );
-                        } else if (focused.name === localization.OPTION_STREAM_TIME.name.default) {
-                            return interaction.respond(
-                                new Array(24)
-                                    .fill(undefined)
-                                    .map((_, i) => new Array(60).fill(undefined).map((_, j) => `${i < 10 ? '0' : ''}${i}:${j < 10 ? '0' : ''}${j}`))
-                                    .flat(1)
-                                    .filter(h => h.startsWith(focused.value))
-                                    .slice(0, 25)
-                                    .map(h => ({ name: h, value: h }))
-                            );
-                        } else if (focused.name === localization.OPTION_STREAM_TIMEZONE.name.default || (subcommand === localization.COMMAND_CALENDAR_TIMEZONE.name.default && focused.name === localization.OPTION_STREAM_NEW_TIMEZONE.name.default)) {
-                            return interaction.respond(
-                                Intl.supportedValuesOf('timeZone')
-                                    .filter(t => t.match(new RegExp(focused.value, 'i')))
-                                    .slice(0, 25)
-                                    .map(t => ({ name: t, value: t }))
-                            );
-                        }
-                    } else if (interaction.isChatInputCommand()) {
-                        await interaction.deferReply({ ephemeral: interaction.options.getBoolean(localization.OPTION_STREAM_EPHEMERAL.name.default) !== false });
-
-                        const channel = await TwitchChannel.findOne({ guildId: interaction.guildId }).exec();
-                        if (!channel) {
-                            if (commandName === localization.COMMAND_SCHEDULE.name.default) {
-                                return interaction.editReply(getLocalizedText('TEXT_NOT_CONNECTED_PUBLIC', locale));
-                            }
-
-                            return interaction.editReply(getLocalizedText('TEXT_NOT_CONNECTED', locale).replaceAll('$url', `${connectUrl}&state=${LZString.compressToBase64(JSON.stringify({ guildId: interaction.guildId }))}`));
+                    try {
+                        const commandName = interaction.commandName;
+                        if (commandName !== localization.COMMAND_CALENDAR.name.default && commandName !== localization.COMMAND_SCHEDULE.name.default) {
+                            return;
                         }
 
-                        let segmentId = LZString.decompressFromUTF16(interaction.options.getString(localization.OPTION_STREAM_STREAM.name.default) ?? '');
-                        switch (subcommand) {
-                            case localization.COMMAND_SCHEDULE.name.default:
-                            case localization.COMMAND_CALENDAR_LIST.name.default:
-                                return fetchTwitchData(schedule => schedule.data?.segments, `https://api.twitch.tv/helix/schedule?broadcaster_id=${channel.twitchId}&start_time=${new Date().toISOString()}&first=25`, { headers: await getTwitchHeaders(config.twitch.clientId, config.twitch.clientSecret, await getTwitchUserToken(interaction, channel)) }, 2)
-                                    .then(streams => streams.map(stream => `**${stream.title}**\n_${getLocalizedText('LABEL_DATE', locale)} <t:${Math.floor(new Date(stream.start_time) / 1000)}:f> - <t:${Math.floor(new Date(stream.end_time) / 1000)}:f> (<t:${Math.floor(new Date(stream.start_time) / 1000)}:R>)_\n_${getLocalizedText('LABEL_GAME', locale)} ${stream.category?.name ?? getLocalizedText('TEXT_NONE', locale)}_`))
-                                    .then(streams =>
-                                        interaction.editReply(
-                                            streams.length
-                                                ? streams
-                                                      .slice(
-                                                          0,
-                                                          streams.reduce(
-                                                              (value, b, index) => ({
-                                                                  length: value.length + '\n\n'.length + b.length,
-                                                                  index: value.length + b.length + '\n\n'.length > 2000 ? value.index : index
-                                                              }),
-                                                              {
-                                                                  length: 0,
-                                                                  index: 0
-                                                              }
-                                                          ).index
+                        const subcommand = commandName === localization.COMMAND_SCHEDULE.name.default ? commandName : interaction.options.getSubcommand();
+                        if (interaction.isAutocomplete()) {
+                            const focused = interaction.options.getFocused(true);
+
+                            if (focused.name === localization.OPTION_STREAM_GAME.name.default) {
+                                const twitch_headers = await getTwitchHeaders(config.twitch.clientId, config.twitch.clientSecret);
+
+                                return fetch('https://api.igdb.com/v4/games', {
+                                    method: 'POST',
+                                    headers: twitch_headers,
+                                    body: `search "${focused.value}";fields id;limit 100;`
+                                })
+                                    .then(response => response.json())
+                                    .then(igdbGames =>
+                                        igdbGames?.length
+                                            ? fetch(`https://api.twitch.tv/helix/games?${igdbGames.map(game => `igdb_id=${game.id}`).join('&')}`, { headers: twitch_headers })
+                                                  .then(response => response.json())
+                                                  .then(games =>
+                                                      interaction.respond(
+                                                          sortByRelevance(games?.data ?? [], focused.value, 'name')
+                                                              .slice(0, 25)
+                                                              .map(game => ({
+                                                                  name: game.name,
+                                                                  value: game.id
+                                                              }))
                                                       )
-                                                      .join('\n\n')
-                                                : getLocalizedText(commandName === localization.COMMAND_SCHEDULE.name.default ? 'TEXT_NO_STREAMS_PUBLIC' : 'TEXT_NO_STREAMS', locale)
-                                        )
+                                                  )
+                                            : interaction.respond([])
                                     );
-                            case localization.COMMAND_CALENDAR_CREATE.name.default:
-                            case localization.COMMAND_CALENDAR_EDIT.name.default:
-                                const body = {};
+                            } else if (focused.name === localization.OPTION_STREAM_STREAM.name.default) {
+                                const channel = await TwitchChannel.findOne({ guildId: interaction.guildId }).exec();
 
-                                const option_date = interaction.options.getString(localization.OPTION_STREAM_DATE.name.default);
-                                const option_time = interaction.options.getString(localization.OPTION_STREAM_TIME.name.default);
-                                const option_timezone = interaction.options.getString(localization.OPTION_STREAM_TIMEZONE.name.default) ?? channel.timeZone ?? (config.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone);
-                                if (option_date && option_time && option_timezone) {
-                                    body.start_time = localizedDate(`${option_date}T${option_time}Z`, option_timezone);
-                                    body.timezone = option_timezone;
-                                } else if (option_date || option_time) {
-                                    return interaction.editReply(getLocalizedText('TEXT_TIME_INCOMPLETE', locale));
+                                if (!channel) {
+                                    return interaction.respond([]);
                                 }
 
-                                const option_duration = interaction.options.getInteger(localization.OPTION_STREAM_DURATION.name.default);
-                                if (option_duration) {
-                                    body.duration = option_duration;
+                                return interaction.respond(
+                                    (await fetchTwitchData(schedule => schedule.data?.segments, `https://api.twitch.tv/helix/schedule?broadcaster_id=${channel.twitchId}&start_time=${new Date().toISOString()}&first=25`, { headers: await getTwitchHeaders(config.twitch.clientId, config.twitch.clientSecret) }, 2))
+                                        .map(segment => ({
+                                            name: `${segment.title.slice(0, 60)}${segment.title.length > 60 ? '...' : ''} (${new Date(segment.start_time).toLocaleDateString(locale, {
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                            })})`,
+                                            value: LZString.compressToUTF16(segment.id)
+                                        }))
+                                        .filter(choice => choice.name.match(new RegExp(`${focused.value}`, 'gi')))
+                                        .slice(0, 25)
+                                );
+                            } else if (focused.name === localization.OPTION_STREAM_DATE.name.default) {
+                                return interaction.respond(
+                                    new Array(365)
+                                        .fill(undefined)
+                                        .map((_, i) => {
+                                            const date = new Date();
+                                            date.setDate(date.getDate() + i);
+
+                                            return {
+                                                name: `${date.toLocaleDateString(locale)} (${date.toLocaleDateString(locale, { dateStyle: 'long' })})`,
+                                                value: date.toISOString().slice(0, 10)
+                                            };
+                                        })
+                                        .filter(d => d.name.match(focused.value) || d.value.match(focused.value))
+                                        .slice(0, 25)
+                                );
+                            } else if (focused.name === localization.OPTION_STREAM_TIME.name.default) {
+                                return interaction.respond(
+                                    new Array(24)
+                                        .fill(undefined)
+                                        .map((_, i) => new Array(60).fill(undefined).map((_, j) => `${i < 10 ? '0' : ''}${i}:${j < 10 ? '0' : ''}${j}`))
+                                        .flat(1)
+                                        .filter(h => h.startsWith(focused.value))
+                                        .slice(0, 25)
+                                        .map(h => ({ name: h, value: h }))
+                                );
+                            } else if (focused.name === localization.OPTION_STREAM_TIMEZONE.name.default || (subcommand === localization.COMMAND_CALENDAR_TIMEZONE.name.default && focused.name === localization.OPTION_STREAM_NEW_TIMEZONE.name.default)) {
+                                return interaction.respond(
+                                    Intl.supportedValuesOf('timeZone')
+                                        .filter(t => t.match(new RegExp(focused.value, 'i')))
+                                        .slice(0, 25)
+                                        .map(t => ({ name: t, value: t }))
+                                );
+                            }
+                        } else if (interaction.isChatInputCommand()) {
+                            await interaction.deferReply({ ephemeral: interaction.options.getBoolean(localization.OPTION_STREAM_EPHEMERAL.name.default) !== false });
+
+                            const channel = await TwitchChannel.findOne({ guildId: interaction.guildId }).exec();
+                            if (!channel) {
+                                if (commandName === localization.COMMAND_SCHEDULE.name.default) {
+                                    return interaction.editReply(getLocalizedText('TEXT_NOT_CONNECTED_PUBLIC', locale));
                                 }
 
-                                const option_recurring = interaction.options.getBoolean(localization.OPTION_STREAM_RECURRING.name.default);
-                                if (typeof option_recurring === 'boolean') {
-                                    body.is_recurring = option_recurring;
-                                }
+                                return interaction.editReply(getLocalizedText('TEXT_NOT_CONNECTED', locale).replaceAll('$url', `${connectUrl}&state=${LZString.compressToBase64(JSON.stringify({ guildId: interaction.guildId }))}`));
+                            }
 
-                                const option_game = interaction.options.getString(localization.OPTION_STREAM_GAME.name.default);
-                                if (option_game) {
-                                    body.category_id = option_game;
-                                }
+                            let segmentId = LZString.decompressFromUTF16(interaction.options.getString(localization.OPTION_STREAM_STREAM.name.default) ?? '');
+                            switch (subcommand) {
+                                case localization.COMMAND_SCHEDULE.name.default:
+                                case localization.COMMAND_CALENDAR_LIST.name.default:
+                                    return fetchTwitchData(schedule => schedule.data?.segments, `https://api.twitch.tv/helix/schedule?broadcaster_id=${channel.twitchId}&start_time=${new Date().toISOString()}&first=25`, { headers: await getTwitchHeaders(config.twitch.clientId, config.twitch.clientSecret, await getTwitchUserToken(interaction, channel)) }, 2)
+                                        .then(streams => streams.map(stream => `**${stream.title}**\n_${getLocalizedText('LABEL_DATE', locale)} <t:${Math.floor(new Date(stream.start_time) / 1000)}:f> - <t:${Math.floor(new Date(stream.end_time) / 1000)}:f> (<t:${Math.floor(new Date(stream.start_time) / 1000)}:R>)_\n_${getLocalizedText('LABEL_GAME', locale)} ${stream.category?.name ?? getLocalizedText('TEXT_NONE', locale)}_`))
+                                        .then(streams =>
+                                            interaction.editReply(
+                                                streams.length
+                                                    ? streams
+                                                          .slice(
+                                                              0,
+                                                              streams.reduce(
+                                                                  (value, b, index) => ({
+                                                                      length: value.length + '\n\n'.length + b.length,
+                                                                      index: value.length + b.length + '\n\n'.length > 2000 ? value.index : index
+                                                                  }),
+                                                                  {
+                                                                      length: 0,
+                                                                      index: 0
+                                                                  }
+                                                              ).index
+                                                          )
+                                                          .join('\n\n')
+                                                    : getLocalizedText(commandName === localization.COMMAND_SCHEDULE.name.default ? 'TEXT_NO_STREAMS_PUBLIC' : 'TEXT_NO_STREAMS', locale)
+                                            )
+                                        );
+                                case localization.COMMAND_CALENDAR_CREATE.name.default:
+                                case localization.COMMAND_CALENDAR_EDIT.name.default:
+                                    const body = {};
 
-                                const option_title = interaction.options.getString(localization.OPTION_STREAM_TITLE.name.default);
-                                if (option_title) {
-                                    body.title = option_title;
-                                }
+                                    const option_date = interaction.options.getString(localization.OPTION_STREAM_DATE.name.default);
+                                    const option_time = interaction.options.getString(localization.OPTION_STREAM_TIME.name.default);
+                                    const option_timezone = interaction.options.getString(localization.OPTION_STREAM_TIMEZONE.name.default) ?? channel.timeZone ?? (config.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone);
+                                    if (option_date && option_time && option_timezone) {
+                                        body.start_time = localizedDate(`${option_date}T${option_time}Z`, option_timezone);
+                                        body.timezone = option_timezone;
+                                    } else if (option_date || option_time) {
+                                        return interaction.editReply(getLocalizedText('TEXT_TIME_INCOMPLETE', locale));
+                                    }
 
-                                const option_cancelled = interaction.options.getBoolean(localization.OPTION_STREAM_CANCELLED.name.default);
-                                if (typeof option_cancelled === 'boolean') {
-                                    body.is_canceled = option_cancelled;
-                                }
+                                    const option_duration = interaction.options.getInteger(localization.OPTION_STREAM_DURATION.name.default);
+                                    if (option_duration) {
+                                        body.duration = option_duration;
+                                    }
 
-                                return fetch(`https://api.twitch.tv/helix/schedule/segment?broadcaster_id=${channel.twitchId}${subcommand === localization.COMMAND_CALENDAR_EDIT.name.default ? `&id=${segmentId}` : ''}`, {
-                                    method: subcommand === localization.COMMAND_CALENDAR_CREATE.name.default ? 'POST' : 'PATCH',
-                                    headers: Object.assign(await getTwitchHeaders(config.twitch.clientId, config.twitch.clientSecret, await getTwitchUserToken(interaction, channel)), { 'Content-Type': 'application/json' }),
-                                    body: JSON.stringify(body)
-                                }).then(async response => {
-                                    if (response.status === 401 || response.status === 403) {
-                                        return interaction.editReply(getLocalizedText('TEXT_NOT_CONNECTED', locale).replaceAll('$url', `${connectUrl}&state=${LZString.compressToBase64(JSON.stringify({ guildId: interaction.guildId }))}`));
-                                    } else if (response.status >= 200 && response.status < 300) {
-                                        if (interaction.options.getBoolean('discord')) {
-                                            try {
-                                                const res = await response.json();
-                                                const linkedEvents = [...(await interaction.guild.scheduledEvents.fetch()).values()].filter(e => e.description.includes(res.data.segments[0].id));
+                                    const option_recurring = interaction.options.getBoolean(localization.OPTION_STREAM_RECURRING.name.default);
+                                    if (typeof option_recurring === 'boolean') {
+                                        body.is_recurring = option_recurring;
+                                    }
 
-                                                console.log(res.data.segments[0].start_time, res.data.segments[0].end_time, res.data.segments);
-                                                const eventConfig = {
-                                                    entityType: GuildScheduledEventEntityType.External,
-                                                    privacyLevel: GuildScheduledEventPrivacyLevel.GuildOnly,
-                                                    scheduledStartTime: new Date(res.data.segments[0].start_time).getTime(),
-                                                    scheduledEndTime: new Date(res.data.segments[0].end_time).getTime(),
-                                                    entityMetadata: { location: `https://www.twitch.tv/${res.data.broadcaster_login}` },
-                                                    name: res.data.segments[0].title,
-                                                    description: `[⛓](https://www.twitch.tv/${res.data.broadcaster_login}/schedule?segmentID=${res.data.segments[0].id})`
-                                                };
+                                    const option_game = interaction.options.getString(localization.OPTION_STREAM_GAME.name.default);
+                                    if (option_game) {
+                                        body.category_id = option_game;
+                                    }
 
-                                                if (linkedEvents.length) {
-                                                    await Promise.all(linkedEvents.map(e => e.edit(eventConfig)));
-                                                } else {
-                                                    await interaction.guild.scheduledEvents.create(eventConfig);
+                                    const option_title = interaction.options.getString(localization.OPTION_STREAM_TITLE.name.default);
+                                    if (option_title) {
+                                        body.title = option_title;
+                                    }
+
+                                    const option_cancelled = interaction.options.getBoolean(localization.OPTION_STREAM_CANCELLED.name.default);
+                                    if (typeof option_cancelled === 'boolean') {
+                                        body.is_canceled = option_cancelled;
+                                    }
+
+                                    return fetch(`https://api.twitch.tv/helix/schedule/segment?broadcaster_id=${channel.twitchId}${subcommand === localization.COMMAND_CALENDAR_EDIT.name.default ? `&id=${segmentId}` : ''}`, {
+                                        method: subcommand === localization.COMMAND_CALENDAR_CREATE.name.default ? 'POST' : 'PATCH',
+                                        headers: Object.assign(await getTwitchHeaders(config.twitch.clientId, config.twitch.clientSecret, await getTwitchUserToken(interaction, channel)), { 'Content-Type': 'application/json' }),
+                                        body: JSON.stringify(body)
+                                    }).then(async response => {
+                                        if (response.status === 401 || response.status === 403) {
+                                            return interaction.editReply(getLocalizedText('TEXT_NOT_CONNECTED', locale).replaceAll('$url', `${connectUrl}&state=${LZString.compressToBase64(JSON.stringify({ guildId: interaction.guildId }))}`));
+                                        } else if (response.status >= 200 && response.status < 300) {
+                                            if (interaction.options.getBoolean('discord')) {
+                                                try {
+                                                    const res = await response.json();
+                                                    const linkedEvents = [...(await interaction.guild.scheduledEvents.fetch()).values()].filter(e => e.description.includes(res.data.segments[0].id));
+
+                                                    console.log(res.data.segments[0].start_time, res.data.segments[0].end_time, res.data.segments);
+                                                    const eventConfig = {
+                                                        entityType: GuildScheduledEventEntityType.External,
+                                                        privacyLevel: GuildScheduledEventPrivacyLevel.GuildOnly,
+                                                        scheduledStartTime: new Date(res.data.segments[0].start_time).getTime(),
+                                                        scheduledEndTime: new Date(res.data.segments[0].end_time).getTime(),
+                                                        entityMetadata: { location: `https://www.twitch.tv/${res.data.broadcaster_login}` },
+                                                        name: res.data.segments[0].title,
+                                                        description: `[⛓](https://www.twitch.tv/${res.data.broadcaster_login}/schedule?segmentID=${res.data.segments[0].id})`
+                                                    };
+
+                                                    if (linkedEvents.length) {
+                                                        await Promise.all(linkedEvents.map(e => e.edit(eventConfig)));
+                                                    } else {
+                                                        await interaction.guild.scheduledEvents.create(eventConfig);
+                                                    }
+                                                } catch (err) {
+                                                    console.error(err);
                                                 }
-                                            } catch (err) {
-                                                console.error(err);
                                             }
+
+                                            return interaction.editReply(getLocalizedText(subcommand === localization.COMMAND_CALENDAR_CREATE.name.default ? 'TEXT_STREAM_CREATED' : 'TEXT_STREAM_EDITED', locale));
+                                        } else {
+                                            console.error(response.statusText);
+
+                                            try {
+                                                console.error(await response.json());
+                                            } catch (err) {}
+
+                                            return interaction.editReply(getLocalizedText('TEXT_ERROR', locale));
+                                        }
+                                    });
+                                case localization.COMMAND_CALENDAR_DELETE.name.default:
+                                    return fetch(`https://api.twitch.tv/helix/schedule/segment?broadcaster_id=${channel.twitchId}&id=${segmentId}`, {
+                                        method: 'DELETE',
+                                        headers: await getTwitchHeaders(config.twitch.clientId, config.twitch.clientSecret, await getTwitchUserToken(interaction, channel))
+                                    }).then(async response => {
+                                        if (response.status >= 200 && response.status < 300) {
+                                            await Promise.all([...(await interaction.guild.scheduledEvents.fetch()).values()].filter(e => e.description.includes(segmentId)).map(e => e.delete())).catch(console.error);
+                                            return interaction.editReply(getLocalizedText('TEXT_STREAM_DELETED', locale));
                                         }
 
-                                        return interaction.editReply(getLocalizedText(subcommand === localization.COMMAND_CALENDAR_CREATE.name.default ? 'TEXT_STREAM_CREATED' : 'TEXT_STREAM_EDITED', locale));
-                                    } else {
                                         console.error(response.statusText);
 
                                         try {
@@ -340,42 +360,30 @@ export default async function (config) {
                                         } catch (err) {}
 
                                         return interaction.editReply(getLocalizedText('TEXT_ERROR', locale));
+                                    });
+                                case localization.COMMAND_CALENDAR_TIMEZONE.name.default:
+                                    const newTimezone = interaction.options.getString(localization.OPTION_STREAM_NEW_TIMEZONE.name.default);
+
+                                    if (newTimezone) {
+                                        if (Intl.supportedValuesOf('timeZone').includes(newTimezone)) {
+                                            channel.timeZone = newTimezone;
+                                            await channel.save();
+
+                                            return interaction.editReply(getLocalizedText('TEXT_CHANGED_TIMEZONE', locale).replace('%timeZone%', channel.timeZone));
+                                        }
+
+                                        return interaction.editReply(getLocalizedText('TEXT_ERROR', locale));
+                                    } else {
+                                        return interaction.editReply(getLocalizedText('TEXT_CURRENT_TIMEZONE', locale).replace('%timeZone%', channel.timeZone));
                                     }
-                                });
-                            case localization.COMMAND_CALENDAR_DELETE.name.default:
-                                return fetch(`https://api.twitch.tv/helix/schedule/segment?broadcaster_id=${channel.twitchId}&id=${segmentId}`, {
-                                    method: 'DELETE',
-                                    headers: await getTwitchHeaders(config.twitch.clientId, config.twitch.clientSecret, await getTwitchUserToken(interaction, channel))
-                                }).then(async response => {
-                                    if (response.status >= 200 && response.status < 300) {
-                                        await Promise.all([...(await interaction.guild.scheduledEvents.fetch()).values()].filter(e => e.description.includes(segmentId)).map(e => e.delete())).catch(console.error);
-                                        return interaction.editReply(getLocalizedText('TEXT_STREAM_DELETED', locale));
-                                    }
-
-                                    console.error(response.statusText);
-
-                                    try {
-                                        console.error(await response.json());
-                                    } catch (err) {}
-
-                                    return interaction.editReply(getLocalizedText('TEXT_ERROR', locale));
-                                });
-                            case localization.COMMAND_CALENDAR_TIMEZONE.name.default:
-                                const newTimezone = interaction.options.getString(localization.OPTION_STREAM_NEW_TIMEZONE.name.default);
-
-                                if (newTimezone) {
-                                    if (Intl.supportedValuesOf('timeZone').includes(newTimezone)) {
-                                        channel.timeZone = newTimezone;
-                                        await channel.save();
-
-                                        return interaction.editReply(getLocalizedText('TEXT_CHANGED_TIMEZONE', locale).replace('%timeZone%', channel.timeZone));
-                                    }
-
-                                    return interaction.editReply(getLocalizedText('TEXT_ERROR', locale));
-                                } else {
-                                    return interaction.editReply(getLocalizedText('TEXT_CURRENT_TIMEZONE', locale).replace('%timeZone%', channel.timeZone));
-                                }
+                            }
                         }
+                    } catch (err) {
+                        console.error(err);
+
+                        try {
+                            return interaction[interaction.deferred ? 'editReply' : 'reply']({ ephemeral: true, content: getLocalizedText('TEXT_ERROR', locale) });
+                        } catch (err) {}
                     }
                 })
                 .on(Events.ClientReady, client => {
