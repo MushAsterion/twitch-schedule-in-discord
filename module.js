@@ -351,7 +351,6 @@ export default async function (config) {
                                                 const linkedEvents = [...(await interaction.guild.scheduledEvents.fetch()).values()].filter(e => e.description.includes(res.data.segments[0].id));
 
                                                 if (discordOption) {
-                                                    console.log(res.data.segments[0].start_time, res.data.segments[0].end_time, res.data.segments);
                                                     const eventConfig = {
                                                         entityType: GuildScheduledEventEntityType.External,
                                                         privacyLevel: GuildScheduledEventPrivacyLevel.GuildOnly,
