@@ -359,6 +359,26 @@ const localizations = {
             }
         }
     },
+    OPTION_STREAM_DISCORD: {
+        name: {
+            default: 'discord',
+            localization: {
+                fr: 'discord',
+                'es-ES': 'discord',
+                'pt-BR': 'discord',
+                it: 'discord'
+            }
+        },
+        description: {
+            default: 'Bind the stream to a Discord event.',
+            localization: {
+                fr: 'Lier le stream à un événement Discord.',
+                'es-ES': 'Vincular el stream a un evento de Discord.',
+                'pt-BR': 'Vincular o stream a um evento do Discord.',
+                it: 'Associare il stream a un evento di Discord.'
+            }
+        }
+    },
     TEXT_NOT_CONNECTED: {
         default: `${localization_text_not_connected_public.default} Please first [connect your channel](<$url>).`,
         localization: {

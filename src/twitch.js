@@ -1,4 +1,15 @@
 /**
+ * Get a session for an access token.
+ * @param {string} clientId - Id of the Twitch Client.
+ * @param {string} clientSecret - Secret of the Twitch Client.
+ * @param {string} accessToken - Access token to retrieve the session for.
+ * @returns {Promise<{ client_id: string, login: string, scopes: string[], user_id: string, expires_in: number }>}
+ */
+export async function getSession(clientId, clientSecret, accessToken) {
+    return fetch('https://id.twitch.tv/oauth2/validate', { headers: await getTwitchHeaders(clientId, clientSecret, accessToken) }).then(response => response.json());
+}
+
+/**
  * Get a fresh token and refresh refresh token.
  * @param {string} clientId - Id of the Twitch Client.
  * @param {string} clientSecret - Secret of the Twitch Client.
@@ -11,12 +22,7 @@
  */
 export async function refreshTwitchToken(clientId, clientSecret, guildId, document, code, redirectUri, Model) {
     const { access_token, refresh_token } = await fetch(`https://id.twitch.tv/oauth2/token?client_id=${clientId}&client_secret=${clientSecret}&${code ? `code=${code}&grant_type=authorization_code&redirect_uri=${encodeURIComponent(redirectUri)}` : `refresh_token=${document.refresh_token}&grant_type=refresh_token`}`, { method: 'POST' }).then(response => response.json());
-
-    const twitchId = code
-        ? await fetch('https://id.twitch.tv/oauth2/validate', { headers: await getTwitchHeaders(clientId, clientSecret, access_token) })
-              .then(response => response.json())
-              .then(response => response.user_id)
-        : document;
+    const twitchId = code ? await getSession(clientId, clientSecret, access_token).then(session => session.user_id) : document;
 
     if (code && !twitchId) {
         throw new Error('Failed to authenticate user.');

@@ -1,8 +1,8 @@
 import LZString from 'lz-string';
-import { Client, Events, IntentsBitField, SlashCommandBooleanOption, SlashCommandBuilder, SlashCommandIntegerOption, SlashCommandStringOption, SlashCommandSubcommandBuilder, Locale, PermissionFlagsBits } from 'discord.js';
+import { Client, Events, IntentsBitField, SlashCommandBooleanOption, SlashCommandBuilder, SlashCommandIntegerOption, SlashCommandStringOption, SlashCommandSubcommandBuilder, Locale, PermissionFlagsBits, GuildScheduledEventEntityType, GuildScheduledEventPrivacyLevel } from 'discord.js';
 import mongoose from 'mongoose';
 
-import { getTwitchHeaders, fetchTwitchData, refreshTwitchToken } from './src/twitch.js';
+import { getTwitchHeaders, fetchTwitchData, refreshTwitchToken, getSession } from './src/twitch.js';
 import localization, { getLocalizedText, localizedDate } from './src/localization.js';
 import { sortByRelevance } from './src/string.js';
 
@@ -231,6 +231,7 @@ export default async function (config) {
                             return interaction.editReply(getLocalizedText('TEXT_NOT_CONNECTED', locale).replaceAll('$url', `${connectUrl}&state=${LZString.compressToBase64(JSON.stringify({ guildId: interaction.guildId }))}`));
                         }
 
+                        let segmentId = LZString.decompressFromUTF16(interaction.options.getString(localization.OPTION_STREAM_STREAM.name.default) ?? '');
                         switch (subcommand) {
                             case localization.COMMAND_SCHEDULE.name.default:
                             case localization.COMMAND_CALENDAR_LIST.name.default:
@@ -296,7 +297,7 @@ export default async function (config) {
                                     body.is_canceled = option_cancelled;
                                 }
 
-                                return fetch(`https://api.twitch.tv/helix/schedule/segment?broadcaster_id=${channel.twitchId}${subcommand === localization.COMMAND_CALENDAR_EDIT.name.default ? `&id=${LZString.decompressFromUTF16(interaction.options.getString(localization.OPTION_STREAM_STREAM.name.default))}` : ''}`, {
+                                return fetch(`https://api.twitch.tv/helix/schedule/segment?broadcaster_id=${channel.twitchId}${subcommand === localization.COMMAND_CALENDAR_EDIT.name.default ? `&id=${segmentId}` : ''}`, {
                                     method: subcommand === localization.COMMAND_CALENDAR_CREATE.name.default ? 'POST' : 'PATCH',
                                     headers: Object.assign(await getTwitchHeaders(config.twitch.clientId, config.twitch.clientSecret, await getTwitchUserToken(interaction, channel)), { 'Content-Type': 'application/json' }),
                                     body: JSON.stringify(body)
@@ -304,6 +305,32 @@ export default async function (config) {
                                     if (response.status === 401 || response.status === 403) {
                                         return interaction.editReply(getLocalizedText('TEXT_NOT_CONNECTED', locale).replaceAll('$url', `${connectUrl}&state=${LZString.compressToBase64(JSON.stringify({ guildId: interaction.guildId }))}`));
                                     } else if (response.status >= 200 && response.status < 300) {
+                                        if (interaction.options.getBoolean('discord')) {
+                                            try {
+                                                const res = await response.json();
+                                                const linkedEvents = [...(await interaction.guild.scheduledEvents.fetch()).values()].filter(e => e.description.includes(res.data.segments[0].id));
+
+                                                console.log(res.data.segments[0].start_time, res.data.segments[0].end_time, res.data.segments);
+                                                const eventConfig = {
+                                                    entityType: GuildScheduledEventEntityType.External,
+                                                    privacyLevel: GuildScheduledEventPrivacyLevel.GuildOnly,
+                                                    scheduledStartTime: new Date(res.data.segments[0].start_time).getTime(),
+                                                    scheduledEndTime: new Date(res.data.segments[0].end_time).getTime(),
+                                                    entityMetadata: { location: `https://www.twitch.tv/${res.data.broadcaster_login}` },
+                                                    name: res.data.segments[0].title,
+                                                    description: `[⛓](https://www.twitch.tv/${res.data.broadcaster_login}/schedule?segmentID=${res.data.segments[0].id})`
+                                                };
+
+                                                if (linkedEvents.length) {
+                                                    await Promise.all(linkedEvents.map(e => e.edit(eventConfig)));
+                                                } else {
+                                                    await interaction.guild.scheduledEvents.create(eventConfig);
+                                                }
+                                            } catch (err) {
+                                                console.error(err);
+                                            }
+                                        }
+
                                         return interaction.editReply(getLocalizedText(subcommand === localization.COMMAND_CALENDAR_CREATE.name.default ? 'TEXT_STREAM_CREATED' : 'TEXT_STREAM_EDITED', locale));
                                     } else {
                                         console.error(response.statusText);
@@ -316,11 +343,12 @@ export default async function (config) {
                                     }
                                 });
                             case localization.COMMAND_CALENDAR_DELETE.name.default:
-                                return fetch(`https://api.twitch.tv/helix/schedule/segment?broadcaster_id=${channel.twitchId}&id=${LZString.decompressFromUTF16(interaction.options.getString(localization.OPTION_STREAM_STREAM.name.default) ?? '')}`, {
+                                return fetch(`https://api.twitch.tv/helix/schedule/segment?broadcaster_id=${channel.twitchId}&id=${segmentId}`, {
                                     method: 'DELETE',
                                     headers: await getTwitchHeaders(config.twitch.clientId, config.twitch.clientSecret, await getTwitchUserToken(interaction, channel))
                                 }).then(async response => {
                                     if (response.status >= 200 && response.status < 300) {
+                                        await Promise.all([...(await interaction.guild.scheduledEvents.fetch()).values()].filter(e => e.description.includes(segmentId)).map(e => e.delete())).catch(console.error);
                                         return interaction.editReply(getLocalizedText('TEXT_STREAM_DELETED', locale));
                                     }
 
@@ -366,14 +394,23 @@ export default async function (config) {
                                             .setDescription(localization.COMMAND_CALENDAR_CREATE.description.default)
                                             .setDescriptionLocalizations(localization.COMMAND_CALENDAR_CREATE.description.localization ?? null),
                                         true
-                                    ).addBooleanOption(
-                                        new SlashCommandBooleanOption()
-                                            .setName(localization.OPTION_STREAM_RECURRING.name.default)
-                                            .setNameLocalizations(localization.OPTION_STREAM_RECURRING.name.localization ?? null)
-                                            .setDescription(localization.OPTION_STREAM_RECURRING.description.default)
-                                            .setDescriptionLocalizations(localization.OPTION_STREAM_RECURRING.description.localization ?? null)
-                                            .setRequired(false)
                                     )
+                                        .addBooleanOption(
+                                            new SlashCommandBooleanOption()
+                                                .setName(localization.OPTION_STREAM_RECURRING.name.default)
+                                                .setNameLocalizations(localization.OPTION_STREAM_RECURRING.name.localization ?? null)
+                                                .setDescription(localization.OPTION_STREAM_RECURRING.description.default)
+                                                .setDescriptionLocalizations(localization.OPTION_STREAM_RECURRING.description.localization ?? null)
+                                                .setRequired(false)
+                                        )
+                                        .addBooleanOption(
+                                            new SlashCommandBooleanOption()
+                                                .setName(localization.OPTION_STREAM_DISCORD.name.default)
+                                                .setNameLocalizations(localization.OPTION_STREAM_DISCORD.name.localization ?? null)
+                                                .setDescription(localization.OPTION_STREAM_DISCORD.description.default)
+                                                .setDescriptionLocalizations(localization.OPTION_STREAM_DISCORD.description.localization ?? null)
+                                                .setRequired(false)
+                                        )
                                 )
                                 .addSubcommand(
                                     addStreamOptions(
@@ -391,14 +428,23 @@ export default async function (config) {
                                                     .setAutocomplete(true)
                                                     .setRequired(true)
                                             )
-                                    ).addBooleanOption(
-                                        new SlashCommandBooleanOption()
-                                            .setName(localization.OPTION_STREAM_CANCELLED.name.default)
-                                            .setNameLocalizations(localization.OPTION_STREAM_CANCELLED.name.localization ?? null)
-                                            .setDescription(localization.OPTION_STREAM_CANCELLED.description.default)
-                                            .setDescriptionLocalizations(localization.OPTION_STREAM_CANCELLED.description.localization ?? null)
-                                            .setRequired(false)
                                     )
+                                        .addBooleanOption(
+                                            new SlashCommandBooleanOption()
+                                                .setName(localization.OPTION_STREAM_CANCELLED.name.default)
+                                                .setNameLocalizations(localization.OPTION_STREAM_CANCELLED.name.localization ?? null)
+                                                .setDescription(localization.OPTION_STREAM_CANCELLED.description.default)
+                                                .setDescriptionLocalizations(localization.OPTION_STREAM_CANCELLED.description.localization ?? null)
+                                                .setRequired(false)
+                                        )
+                                        .addBooleanOption(
+                                            new SlashCommandBooleanOption()
+                                                .setName(localization.OPTION_STREAM_DISCORD.name.default)
+                                                .setNameLocalizations(localization.OPTION_STREAM_DISCORD.name.localization ?? null)
+                                                .setDescription(localization.OPTION_STREAM_DISCORD.description.default)
+                                                .setDescriptionLocalizations(localization.OPTION_STREAM_DISCORD.description.localization ?? null)
+                                                .setRequired(false)
+                                        )
                                 )
                                 .addSubcommand(
                                     new SlashCommandSubcommandBuilder()
