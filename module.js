@@ -2,7 +2,7 @@ import LZString from 'lz-string';
 import { Client, Events, IntentsBitField, SlashCommandBooleanOption, SlashCommandBuilder, SlashCommandIntegerOption, SlashCommandStringOption, SlashCommandSubcommandBuilder, PermissionFlagsBits, GuildScheduledEventEntityType, GuildScheduledEventPrivacyLevel, SlashCommandSubcommandGroupBuilder } from 'discord.js';
 import mongoose from 'mongoose';
 
-import { getTwitchHeaders, fetchTwitchData, refreshTwitchToken, getSession } from './src/twitch.js';
+import { getTwitchHeaders, fetchTwitchData, refreshTwitchToken } from './src/twitch.js';
 import localization, { getLocalizedText, localizedDate } from './src/localization.js';
 import { sortByRelevance } from './src/string.js';
 
