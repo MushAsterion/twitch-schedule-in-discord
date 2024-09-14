@@ -131,11 +131,11 @@ export default async function (config) {
             const client = new Client({ intents: [IntentsBitField.Flags.Guilds] })
                 .on(Events.InteractionCreate, async interaction => {
                     const commandName = interaction.commandName;
-                    if (commandName !== localization.COMMAND_CALENDAR.name.default) {
+                    if (commandName !== localization.COMMAND_CALENDAR.name.default && commandName !== localization.COMMAND_SCHEDULE.name.default) {
                         return;
                     }
 
-                    const subcommand = interaction.options.getSubcommand();
+                    const subcommand = commandName === localization.COMMAND_SCHEDULE.name.default ? commandName : interaction.options.getSubcommand();
                     const locale = interaction.locale;
 
                     if (interaction.isAutocomplete()) {
@@ -224,10 +224,15 @@ export default async function (config) {
 
                         const channel = await TwitchChannel.findOne({ guildId: interaction.guildId }).exec();
                         if (!channel) {
+                            if (commandName === localization.COMMAND_SCHEDULE.name.default) {
+                                return interaction.editReply(getLocalizedText('TEXT_NOT_CONNECTED_PUBLIC', locale));
+                            }
+
                             return interaction.editReply(getLocalizedText('TEXT_NOT_CONNECTED', locale).replaceAll('$url', `${connectUrl}&state=${LZString.compressToBase64(JSON.stringify({ guildId: interaction.guildId }))}`));
                         }
 
                         switch (subcommand) {
+                            case localization.COMMAND_SCHEDULE.name.default:
                             case localization.COMMAND_CALENDAR_LIST.name.default:
                                 return fetchTwitchData(schedule => schedule.data?.segments, `https://api.twitch.tv/helix/schedule?broadcaster_id=${channel.twitchId}&start_time=${new Date().toISOString()}&first=25`, { headers: await getTwitchHeaders(config.twitch.clientId, config.twitch.clientSecret, await getTwitchUserToken(interaction, channel)) }, 2)
                                     .then(streams => streams.map(stream => `**${stream.title}**\n_${getLocalizedText('LABEL_DATE', locale)} <t:${Math.floor(new Date(stream.start_time) / 1000)}:f> - <t:${Math.floor(new Date(stream.end_time) / 1000)}:f> (<t:${Math.floor(new Date(stream.start_time) / 1000)}:R>)_\n_${getLocalizedText('LABEL_GAME', locale)} ${stream.category?.name ?? getLocalizedText('TEXT_NONE', locale)}_`))
@@ -249,7 +254,7 @@ export default async function (config) {
                                                           ).index
                                                       )
                                                       .join('\n\n')
-                                                : getLocalizedText('TEXT_NO_STREAMS', locale)
+                                                : getLocalizedText(commandName === localization.COMMAND_SCHEDULE.name.default ? 'TEXT_NO_STREAMS_PUBLIC' : 'TEXT_NO_STREAMS', locale)
                                         )
                                     );
                             case localization.COMMAND_CALENDAR_CREATE.name.default:
@@ -445,6 +450,17 @@ export default async function (config) {
                                 .setDMPermission(false)
                                 .setNSFW(false)
                                 .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+                        );
+
+                        client.application.commands.create(
+                            new SlashCommandBuilder()
+                                .setName(localization.COMMAND_SCHEDULE.name.default)
+                                .setNameLocalizations(localization.COMMAND_SCHEDULE.name.localization ?? null)
+                                .setDescription(localization.COMMAND_SCHEDULE.description.default)
+                                .setDescriptionLocalizations(localization.COMMAND_SCHEDULE.description.localization ?? null)
+                                .setDMPermission(false)
+                                .setNSFW(false)
+                                .setDefaultMemberPermissions(null)
                         );
                     }
                 });

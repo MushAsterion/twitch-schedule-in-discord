@@ -8,7 +8,49 @@ const localization_timezone_name = {
     }
 };
 
+const localization_calendar_list_description = {
+    default: 'List upcoming streams.',
+    localization: {
+        fr: 'Voir les futurs streams.',
+        'es-ES': 'Ver los streams.',
+        'pt-BR': 'Visualizar streams futuros.',
+        it: 'Elenca gli stream in programma.'
+    }
+};
+
+const localization_text_no_streams_public = {
+    default: 'No streams are scheduled yet.',
+    localization: {
+        fr: "Aucun stream n'est prévu.",
+        'es-ES': 'No hay streams programadas aún.',
+        'pt-BR': 'Nenhum stream está agendado ainda.',
+        it: 'Nessuno stream è ancora programmato.'
+    }
+};
+
+const localization_text_not_connected_public = {
+    default: 'No Twitch channel has been connected to this server.',
+    localization: {
+        fr: "Aucune chaîne Twitch n'est configurée pour ce serveur.",
+        'es-ES': 'Ningún canal de Twitch ha sido conectado a este servidor.',
+        'pt-BR': 'Nenhum canal do Twitch foi conectado a este servidor.',
+        it: 'Nessun canale Twitch è stato collegato a questo server.'
+    }
+};
+
 const localizations = {
+    COMMAND_SCHEDULE: {
+        name: {
+            default: 'schedule',
+            localization: {
+                fr: 'programme',
+                'es-ES': 'cronograma',
+                'pt-BR': 'programação',
+                it: 'programazione'
+            }
+        },
+        description: localization_calendar_list_description
+    },
     COMMAND_CALENDAR: {
         name: {
             default: 'calendar',
@@ -99,15 +141,7 @@ const localizations = {
                 it: 'elenco'
             }
         },
-        description: {
-            default: 'List upcoming streams.',
-            localization: {
-                fr: 'Lister les futurs streams.',
-                'es-ES': 'Lista los streams.',
-                'pt-BR': 'Listar streams futuros.',
-                it: 'Elenca gli stream in programma.'
-            }
-        }
+        description: localization_calendar_list_description
     },
     COMMAND_CALENDAR_TIMEZONE: {
         name: localization_timezone_name,
@@ -326,14 +360,15 @@ const localizations = {
         }
     },
     TEXT_NOT_CONNECTED: {
-        default: 'No Twitch channel has been connected to this server. Please first [connect your channel](<$url>).',
+        default: `${localization_text_not_connected_public.default} Please first [connect your channel](<$url>).`,
         localization: {
-            fr: "Aucune chaîne Twitch n'est configurée pour ce serveur. Veuillez d'abord [connecter votre chaîne](<$url>).",
-            'es-ES': 'Ningún canal de Twitch ha sido conectado a este servidor. Primero, [conecta tu canal](<$url>).',
-            'pt-BR': 'Nenhum canal do Twitch foi conectado a este servidor. Por favor, [conecte seu canal](<$url>) primeiro.',
-            it: 'Nessun canale Twitch è stato collegato a questo server. Prima [collega il tuo canale](<$url>).'
+            fr: `${localization_text_not_connected_public.localization.fr} Veuillez d'abord [connecter votre chaîne](<$url>).`,
+            'es-ES': `${localization_text_not_connected_public.localization['es-ES']} Primero, [conecta tu canal](<$url>).`,
+            'pt-BR': `${localization_text_not_connected_public.localization['pt-BR']} Por favor, [conecte seu canal](<$url>) primeiro.`,
+            it: `${localization_text_not_connected_public.localization.it} Prima [collega il tuo canale](<$url>).`
         }
     },
+    TEXT_NOT_CONNECTED_PUBLIC: localization_text_not_connected_public,
     TEXT_STREAM_CREATED: {
         default: 'The stream was successfully created.',
         localization: {
@@ -362,14 +397,15 @@ const localizations = {
         }
     },
     TEXT_NO_STREAMS: {
-        default: 'No streams are scheduled yet. Start by creating one!',
+        default: `${localization_text_no_streams_public.default} Start by creating one!`,
         localization: {
-            fr: "Aucun stream n'est prévu. Créez-en un d'abord !",
-            'es-ES': 'No hay streams programadas aún. ¡Empieza creando una!',
-            'pt-BR': 'Nenhum stream está agendado ainda. Comece criando um!',
-            it: 'Nessuno stream è ancora programmato. Inizia creando uno!'
+            fr: `${localization_text_no_streams_public.localization.fr} Créez-en un d'abord !`,
+            'es-ES': `${localization_text_no_streams_public.localization['es-ES']} ¡Empieza creando una!`,
+            'pt-BR': `${localization_text_no_streams_public.localization['pt-BR']} Comece criando um!`,
+            it: `${localization_text_no_streams_public.localization.it} Inizia creando uno!`
         }
     },
+    TEXT_NO_STREAMS_PUBLIC: localization_text_no_streams_public,
     TEXT_CURRENT_TIMEZONE: {
         default: 'This server default timezone for future streams is set to %timeZone%.',
         localization: {
