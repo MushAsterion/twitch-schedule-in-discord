@@ -8,6 +8,26 @@ const localization_timezone_name = {
     }
 };
 
+const localization_new_name = {
+    default: 'new',
+    localization: {
+        fr: 'nouveau',
+        'es-ES': 'nuevo',
+        'pt-BR': 'novo',
+        it: 'nuovo'
+    }
+};
+
+const localization_reset_name = {
+    default: 'reset',
+    localization: {
+        fr: 'réinitialiser',
+        'es-ES': 'reiniciar',
+        'pt-BR': 'resetar',
+        it: 'reimpostare'
+    }
+};
+
 const localization_calendar_list_description = {
     default: 'List upcoming streams.',
     localization: {
@@ -268,22 +288,26 @@ const localizations = {
         }
     },
     OPTION_STREAM_NEW_TIMEZONE: {
-        name: {
-            default: 'new',
-            localization: {
-                fr: 'nouveau',
-                'es-ES': 'nuevo',
-                'pt-BR': 'novo',
-                it: 'nuovo'
-            }
-        },
+        name: localization_new_name,
         description: {
-            default: 'New default timezone for future streams',
+            default: 'New default timezone for future streams.',
             localization: {
                 fr: 'Nouveau fuseau horaire par défaut pour les futurs streams.',
                 'es-ES': 'Nuevo huso horario predeterminado para los futuros streams.',
                 'pt-BR': 'Novo fuso horário padrão para os futuros streams.',
                 it: 'Nuovo fuso orario predefinito per i futuri streams.'
+            }
+        }
+    },
+    OPTION_STREAM_RESET_TIMEZONE: {
+        name: localization_reset_name,
+        description: {
+            default: 'Reset default timezone for future streams.',
+            localization: {
+                fr: 'Réinitialiser le fuseau horaire par défaut pour les futurs streams.',
+                'es-ES': 'Restablecer el huso horario predeterminado para los futuros streams.',
+                'pt-BR': 'Redefinir o fuso horário padrão para os futuros streams.',
+                it: 'Reimpostare il fuso orario predefinito per i futuri streams.'
             }
         }
     },

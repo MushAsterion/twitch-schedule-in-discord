@@ -366,6 +366,7 @@ export default async function (config) {
                                     });
                                 case localization.COMMAND_CALENDAR_SETTINGS_TIMEZONE.name.default:
                                     const newTimezone = interaction.options.getString(localization.OPTION_STREAM_NEW_TIMEZONE.name.default);
+                                    const resetTimezone = interaction.options.getBoolean(localization.OPTION_STREAM_RESET_TIMEZONE.name.default);
 
                                     if (newTimezone) {
                                         if (Intl.supportedValuesOf('timeZone').includes(newTimezone)) {
@@ -376,8 +377,13 @@ export default async function (config) {
                                         }
 
                                         return interaction.editReply(getLocalizedText('TEXT_ERROR', locale));
+                                    } else if (resetTimezone) {
+                                        channel.timeZone = config.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+                                        await channel.save();
+
+                                        return interaction.editReply(getLocalizedText('TEXT_CHANGED_TIMEZONE', locale).replace('%timeZone%', channel.timeZone));
                                     } else {
-                                        return interaction.editReply(getLocalizedText('TEXT_CURRENT_TIMEZONE', locale).replace('%timeZone%', channel.timeZone));
+                                        return interaction.editReply(getLocalizedText('TEXT_CURRENT_TIMEZONE', locale).replace('%timeZone%', channel.timeZone ?? (config.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone)));
                                     }
                             }
                         }
@@ -507,6 +513,14 @@ export default async function (config) {
                                                         .setDescription(localization.OPTION_STREAM_NEW_TIMEZONE.description.default)
                                                         .setDescriptionLocalizations(localization.OPTION_STREAM_NEW_TIMEZONE.description.localization ?? null)
                                                         .setAutocomplete(true)
+                                                        .setRequired(false)
+                                                )
+                                                .addBooleanOption(
+                                                    new SlashCommandBooleanOption()
+                                                        .setName(localization.OPTION_STREAM_RESET_TIMEZONE.name.default)
+                                                        .setNameLocalizations(localization.OPTION_STREAM_RESET_TIMEZONE.name.localization ?? null)
+                                                        .setDescription(localization.OPTION_STREAM_RESET_TIMEZONE.description.default)
+                                                        .setDescriptionLocalizations(localization.OPTION_STREAM_RESET_TIMEZONE.description.localization ?? null)
                                                         .setRequired(false)
                                                 )
                                         )
