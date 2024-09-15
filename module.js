@@ -1,74 +1,20 @@
 import LZString from 'lz-string';
-import { Client, Events, IntentsBitField, SlashCommandBooleanOption, SlashCommandBuilder, SlashCommandIntegerOption, SlashCommandStringOption, SlashCommandSubcommandBuilder, PermissionFlagsBits, GuildScheduledEventEntityType, GuildScheduledEventPrivacyLevel, SlashCommandSubcommandGroupBuilder, SlashCommandChannelOption, EmbedBuilder, Colors } from 'discord.js';
+import { Client, Events, IntentsBitField, PermissionFlagsBits, GuildScheduledEventEntityType, GuildScheduledEventPrivacyLevel, EmbedBuilder, Colors } from 'discord.js';
 import mongoose from 'mongoose';
 
 import { getTwitchHeaders, fetchTwitchData, refreshTwitchToken } from './src/twitch.js';
 import localization, { getLocalizedText, localizedDate } from './src/localization.js';
 import { sortByRelevance } from './src/string.js';
+import { LocalizedSlashCommandBooleanOption, LocalizedSlashCommandBuilder, LocalizedSlashCommandChannelOption, LocalizedSlashCommandIntegerOption, LocalizedSlashCommandStringOption, LocalizedSlashCommandSubcommandBuilder, LocalizedSlashCommandSubcommandGroupBuilder } from './src/discord.js';
 
 /**
  * Add stream options to builder.
- * @param {SlashCommandSubcommandBuilder} builder - Builder to extend.
+ * @param {LocalizedSlashCommandSubcommandBuilder} builder - Builder to extend.
  * @param {boolean} [required] - Whether options are due to be required.
  * @returns
  */
 function addStreamOptions(builder, required = false) {
-    return builder
-        .addStringOption(
-            new SlashCommandStringOption()
-                .setName(localization.OPTION_STREAM_TITLE.name.default)
-                .setNameLocalizations(localization.OPTION_STREAM_TITLE.name.localization ?? null)
-                .setDescription(localization.OPTION_STREAM_TITLE.description.default)
-                .setDescriptionLocalizations(localization.OPTION_STREAM_TITLE.description.localization ?? null)
-                .setMaxLength(140)
-                .setRequired(required)
-        )
-        .addStringOption(
-            new SlashCommandStringOption()
-                .setName(localization.OPTION_STREAM_GAME.name.default)
-                .setNameLocalizations(localization.OPTION_STREAM_GAME.name.localization ?? null)
-                .setDescription(localization.OPTION_STREAM_GAME.description.default)
-                .setDescriptionLocalizations(localization.OPTION_STREAM_GAME.description.localization ?? null)
-                .setAutocomplete(true)
-                .setRequired(required)
-        )
-        .addStringOption(
-            new SlashCommandStringOption()
-                .setName(localization.OPTION_STREAM_DATE.name.default)
-                .setNameLocalizations(localization.OPTION_STREAM_DATE.name.localization ?? null)
-                .setDescription(localization.OPTION_STREAM_DATE.description.default)
-                .setDescriptionLocalizations(localization.OPTION_STREAM_DATE.description.localization ?? null)
-                .setAutocomplete(true)
-                .setRequired(required)
-        )
-        .addStringOption(
-            new SlashCommandStringOption()
-                .setName(localization.OPTION_STREAM_TIME.name.default)
-                .setNameLocalizations(localization.OPTION_STREAM_TIME.name.localization ?? null)
-                .setDescription(localization.OPTION_STREAM_TIME.description.default)
-                .setDescriptionLocalizations(localization.OPTION_STREAM_TIME.description.localization ?? null)
-                .setAutocomplete(true)
-                .setRequired(required)
-        )
-        .addIntegerOption(
-            new SlashCommandIntegerOption()
-                .setName(localization.OPTION_STREAM_DURATION.name.default)
-                .setNameLocalizations(localization.OPTION_STREAM_DURATION.name.localization ?? null)
-                .setDescription(localization.OPTION_STREAM_DURATION.description.default)
-                .setDescriptionLocalizations(localization.OPTION_STREAM_DURATION.description.localization ?? null)
-                .setMinValue(30)
-                .setMaxValue(1380)
-                .setRequired(required)
-        )
-        .addStringOption(
-            new SlashCommandStringOption()
-                .setName(localization.OPTION_STREAM_TIMEZONE.name.default)
-                .setNameLocalizations(localization.OPTION_STREAM_TIMEZONE.name.localization ?? null)
-                .setDescription(localization.OPTION_STREAM_TIMEZONE.description.default)
-                .setDescriptionLocalizations(localization.OPTION_STREAM_TIMEZONE.description.localization ?? null)
-                .setAutocomplete(true)
-                .setRequired(false)
-        );
+    return builder.addStringOption(new LocalizedSlashCommandStringOption('OPTION_STREAM_TITLE').setMaxLength(140).setRequired(required)).addStringOption(new LocalizedSlashCommandStringOption('OPTION_STREAM_GAME').setAutocomplete(true).setRequired(required)).addStringOption(new LocalizedSlashCommandStringOption('OPTION_STREAM_DATE').setAutocomplete(true).setRequired(required)).addStringOption(new LocalizedSlashCommandStringOption('OPTION_STREAM_TIME').setAutocomplete(true).setRequired(required)).addIntegerOption(new LocalizedSlashCommandIntegerOption('OPTION_STREAM_DURATION').setMinValue(30).setMaxValue(1380).setRequired(required)).addStringOption(new LocalizedSlashCommandStringOption('OPTION_STREAM_TIMEZONE').setAutocomplete(true).setRequired(false));
 }
 
 /**
@@ -503,180 +449,29 @@ export default async function (config) {
                 .on(Events.ClientReady, client => {
                     if (config.registerCommands) {
                         client.application.commands.create(
-                            new SlashCommandBuilder()
-                                .setName(localization.COMMAND_CALENDAR.name.default)
-                                .setNameLocalizations(localization.COMMAND_CALENDAR.name.localization ?? null)
-                                .setDescription(localization.COMMAND_CALENDAR.description.default)
-                                .setDescriptionLocalizations(localization.COMMAND_CALENDAR.description.localization ?? null)
+                            new LocalizedSlashCommandBuilder('COMMAND_CALENDAR')
+                                .addSubcommand(addStreamOptions(new LocalizedSlashCommandSubcommandBuilder('COMMAND_CALENDAR_CREATE'), true).addBooleanOption(new LocalizedSlashCommandBooleanOption('OPTION_STREAM_RECURRING').setRequired(false)).addBooleanOption(new LocalizedSlashCommandBooleanOption('OPTION_STREAM_DISCORD').setRequired(false)))
                                 .addSubcommand(
-                                    addStreamOptions(
-                                        new SlashCommandSubcommandBuilder()
-                                            .setName(localization.COMMAND_CALENDAR_CREATE.name.default)
-                                            .setNameLocalizations(localization.COMMAND_CALENDAR_CREATE.name.localization ?? null)
-                                            .setDescription(localization.COMMAND_CALENDAR_CREATE.description.default)
-                                            .setDescriptionLocalizations(localization.COMMAND_CALENDAR_CREATE.description.localization ?? null),
-                                        true
-                                    )
-                                        .addBooleanOption(
-                                            new SlashCommandBooleanOption()
-                                                .setName(localization.OPTION_STREAM_RECURRING.name.default)
-                                                .setNameLocalizations(localization.OPTION_STREAM_RECURRING.name.localization ?? null)
-                                                .setDescription(localization.OPTION_STREAM_RECURRING.description.default)
-                                                .setDescriptionLocalizations(localization.OPTION_STREAM_RECURRING.description.localization ?? null)
-                                                .setRequired(false)
-                                        )
-                                        .addBooleanOption(
-                                            new SlashCommandBooleanOption()
-                                                .setName(localization.OPTION_STREAM_DISCORD.name.default)
-                                                .setNameLocalizations(localization.OPTION_STREAM_DISCORD.name.localization ?? null)
-                                                .setDescription(localization.OPTION_STREAM_DISCORD.description.default)
-                                                .setDescriptionLocalizations(localization.OPTION_STREAM_DISCORD.description.localization ?? null)
-                                                .setRequired(false)
-                                        )
+                                    addStreamOptions(new LocalizedSlashCommandSubcommandBuilder('COMMAND_CALENDAR_EDIT').addStringOption(new LocalizedSlashCommandStringOption('OPTION_STREAM_STREAM').setAutocomplete(true).setRequired(true)))
+                                        .addBooleanOption(new LocalizedSlashCommandBooleanOption('OPTION_STREAM_CANCELLED').setRequired(false))
+                                        .addBooleanOption(new LocalizedSlashCommandBooleanOption('OPTION_STREAM_DISCORD').setRequired(false))
                                 )
-                                .addSubcommand(
-                                    addStreamOptions(
-                                        new SlashCommandSubcommandBuilder()
-                                            .setName(localization.COMMAND_CALENDAR_EDIT.name.default)
-                                            .setNameLocalizations(localization.COMMAND_CALENDAR_EDIT.name.localization ?? null)
-                                            .setDescription(localization.COMMAND_CALENDAR_EDIT.description.default)
-                                            .setDescriptionLocalizations(localization.COMMAND_CALENDAR_EDIT.description.localization ?? null)
-                                            .addStringOption(
-                                                new SlashCommandStringOption()
-                                                    .setName(localization.OPTION_STREAM_STREAM.name.default)
-                                                    .setNameLocalizations(localization.OPTION_STREAM_STREAM.name.localization ?? null)
-                                                    .setDescription(localization.OPTION_STREAM_STREAM.description.default)
-                                                    .setDescriptionLocalizations(localization.OPTION_STREAM_STREAM.description.localization ?? null)
-                                                    .setAutocomplete(true)
-                                                    .setRequired(true)
-                                            )
-                                    )
-                                        .addBooleanOption(
-                                            new SlashCommandBooleanOption()
-                                                .setName(localization.OPTION_STREAM_CANCELLED.name.default)
-                                                .setNameLocalizations(localization.OPTION_STREAM_CANCELLED.name.localization ?? null)
-                                                .setDescription(localization.OPTION_STREAM_CANCELLED.description.default)
-                                                .setDescriptionLocalizations(localization.OPTION_STREAM_CANCELLED.description.localization ?? null)
-                                                .setRequired(false)
-                                        )
-                                        .addBooleanOption(
-                                            new SlashCommandBooleanOption()
-                                                .setName(localization.OPTION_STREAM_DISCORD.name.default)
-                                                .setNameLocalizations(localization.OPTION_STREAM_DISCORD.name.localization ?? null)
-                                                .setDescription(localization.OPTION_STREAM_DISCORD.description.default)
-                                                .setDescriptionLocalizations(localization.OPTION_STREAM_DISCORD.description.localization ?? null)
-                                                .setRequired(false)
-                                        )
-                                )
-                                .addSubcommand(
-                                    new SlashCommandSubcommandBuilder()
-                                        .setName(localization.COMMAND_CALENDAR_DELETE.name.default)
-                                        .setNameLocalizations(localization.COMMAND_CALENDAR_DELETE.name.localization ?? null)
-                                        .setDescription(localization.COMMAND_CALENDAR_DELETE.description.default)
-                                        .setDescriptionLocalizations(localization.COMMAND_CALENDAR_DELETE.description.localization ?? null)
-                                        .addStringOption(
-                                            new SlashCommandStringOption()
-                                                .setName(localization.OPTION_STREAM_STREAM.name.default)
-                                                .setNameLocalizations(localization.OPTION_STREAM_STREAM.name.localization ?? null)
-                                                .setDescription(localization.OPTION_STREAM_STREAM.description.default)
-                                                .setDescriptionLocalizations(localization.OPTION_STREAM_STREAM.description.localization ?? null)
-                                                .setAutocomplete(true)
-                                                .setRequired(true)
-                                        )
-                                )
-                                .addSubcommand(
-                                    new SlashCommandSubcommandBuilder()
-                                        .setName(localization.COMMAND_CALENDAR_LIST.name.default)
-                                        .setNameLocalizations(localization.COMMAND_CALENDAR_LIST.name.localization ?? null)
-                                        .setDescription(localization.COMMAND_CALENDAR_LIST.description.default)
-                                        .setDescriptionLocalizations(localization.COMMAND_CALENDAR_LIST.description.localization ?? null)
-                                        .addBooleanOption(
-                                            new SlashCommandBooleanOption()
-                                                .setName(localization.OPTION_STREAM_EPHEMERAL.name.default)
-                                                .setNameLocalizations(localization.OPTION_STREAM_EPHEMERAL.name.localization ?? null)
-                                                .setDescription(localization.OPTION_STREAM_EPHEMERAL.description.default)
-                                                .setDescriptionLocalizations(localization.OPTION_STREAM_EPHEMERAL.description.localization ?? null)
-                                                .setRequired(false)
-                                        )
-                                )
+                                .addSubcommand(new LocalizedSlashCommandSubcommandBuilder('COMMAND_CALENDAR_DELETE').addStringOption(new LocalizedSlashCommandStringOption('OPTION_STREAM_STREAM').setAutocomplete(true).setRequired(true)))
+                                .addSubcommand(new LocalizedSlashCommandSubcommandBuilder('COMMAND_CALENDAR_LIST').addBooleanOption(new LocalizedSlashCommandBooleanOption('OPTION_STREAM_EPHEMERAL').setRequired(false)))
                                 .addSubcommandGroup(
-                                    new SlashCommandSubcommandGroupBuilder()
-                                        .setName(localization.COMMAND_CALENDAR_SETTINGS.name.default)
-                                        .setNameLocalizations(localization.COMMAND_CALENDAR_SETTINGS.name.localization ?? null)
-                                        .setDescription(localization.COMMAND_CALENDAR_SETTINGS.description.default)
-                                        .setDescriptionLocalizations(localization.COMMAND_CALENDAR_SETTINGS.description.localization ?? null)
-                                        .addSubcommand(
-                                            new SlashCommandSubcommandBuilder()
-                                                .setName(localization.COMMAND_CALENDAR_SETTINGS_TIMEZONE.name.default)
-                                                .setNameLocalizations(localization.COMMAND_CALENDAR_SETTINGS_TIMEZONE.name.localization ?? null)
-                                                .setDescription(localization.COMMAND_CALENDAR_SETTINGS_TIMEZONE.description.default)
-                                                .setDescriptionLocalizations(localization.COMMAND_CALENDAR_SETTINGS_TIMEZONE.description.localization ?? null)
-                                                .addStringOption(
-                                                    new SlashCommandStringOption()
-                                                        .setName(localization.OPTION_STREAM_NEW_TIMEZONE.name.default)
-                                                        .setNameLocalizations(localization.OPTION_STREAM_NEW_TIMEZONE.name.localization ?? null)
-                                                        .setDescription(localization.OPTION_STREAM_NEW_TIMEZONE.description.default)
-                                                        .setDescriptionLocalizations(localization.OPTION_STREAM_NEW_TIMEZONE.description.localization ?? null)
-                                                        .setAutocomplete(true)
-                                                        .setRequired(false)
-                                                )
-                                                .addBooleanOption(
-                                                    new SlashCommandBooleanOption()
-                                                        .setName(localization.OPTION_STREAM_RESET_TIMEZONE.name.default)
-                                                        .setNameLocalizations(localization.OPTION_STREAM_RESET_TIMEZONE.name.localization ?? null)
-                                                        .setDescription(localization.OPTION_STREAM_RESET_TIMEZONE.description.default)
-                                                        .setDescriptionLocalizations(localization.OPTION_STREAM_RESET_TIMEZONE.description.localization ?? null)
-                                                        .setRequired(false)
-                                                )
-                                        )
-                                        .addSubcommand(
-                                            new SlashCommandSubcommandBuilder()
-                                                .setName(localization.COMMAND_CALENDAR_SETTINGS_CHANGECHANNEL.name.default)
-                                                .setNameLocalizations(localization.COMMAND_CALENDAR_SETTINGS_CHANGECHANNEL.name.localization ?? null)
-                                                .setDescription(localization.COMMAND_CALENDAR_SETTINGS_CHANGECHANNEL.description.default)
-                                                .setDescriptionLocalizations(localization.COMMAND_CALENDAR_SETTINGS_TIMEZONE.description.localization ?? null)
-                                                .addChannelOption(
-                                                    new SlashCommandChannelOption()
-                                                        .setName(localization.OPTION_STREAM_NEW_CHANGECHANNEL.name.default)
-                                                        .setNameLocalizations(localization.OPTION_STREAM_NEW_CHANGECHANNEL.name.localization ?? null)
-                                                        .setDescription(localization.OPTION_STREAM_NEW_CHANGECHANNEL.description.default)
-                                                        .setDescriptionLocalizations(localization.OPTION_STREAM_NEW_CHANGECHANNEL.description.localization ?? null)
-                                                        .setRequired(false)
-                                                )
-                                                .addStringOption(
-                                                    new SlashCommandStringOption()
-                                                        .setName(localization.OPTION_LOCALE.name.default)
-                                                        .setNameLocalizations(localization.OPTION_LOCALE.name.localization ?? null)
-                                                        .setDescription(localization.OPTION_LOCALE.description.default)
-                                                        .setDescriptionLocalizations(localization.OPTION_LOCALE.description.localization ?? null)
-                                                        .setChoices(localization.OPTION_LOCALE.options ?? [])
-                                                        .setRequired(false)
-                                                )
-                                                .addBooleanOption(
-                                                    new SlashCommandBooleanOption()
-                                                        .setName(localization.OPTION_STREAM_RESET_CHANGECHANNEL.name.default)
-                                                        .setNameLocalizations(localization.OPTION_STREAM_RESET_CHANGECHANNEL.name.localization ?? null)
-                                                        .setDescription(localization.OPTION_STREAM_RESET_CHANGECHANNEL.description.default)
-                                                        .setDescriptionLocalizations(localization.OPTION_STREAM_RESET_CHANGECHANNEL.description.localization ?? null)
-                                                        .setRequired(false)
-                                                )
-                                        )
+                                    new LocalizedSlashCommandSubcommandGroupBuilder('COMMAND_CALENDAR_SETTINGS').addSubcommand(new LocalizedSlashCommandSubcommandBuilder('COMMAND_CALENDAR_SETTINGS_TIMEZONE').addStringOption(new LocalizedSlashCommandStringOption('OPTION_STREAM_NEW_TIMEZONE').setAutocomplete(true).setRequired(false)).addBooleanOption(new LocalizedSlashCommandBooleanOption('OPTION_STREAM_RESET_TIMEZONE').setRequired(false))).addSubcommand(
+                                        new LocalizedSlashCommandSubcommandBuilder('COMMAND_CALENDAR_SETTINGS_CHANGECHANNEL')
+                                            .addChannelOption(new LocalizedSlashCommandChannelOption('OPTION_STREAM_NEW_CHANGECHANNEL').setRequired(false))
+                                            .addStringOption(new LocalizedSlashCommandStringOption('OPTION_LOCALE').setChoices(localization.OPTION_LOCALE.options ?? []).setRequired(false))
+                                            .addBooleanOption(new LocalizedSlashCommandBooleanOption('OPTION_STREAM_RESET_CHANGECHANNEL').setRequired(false))
+                                    )
                                 )
                                 .setDMPermission(false)
                                 .setNSFW(false)
                                 .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
                         );
 
-                        client.application.commands.create(
-                            new SlashCommandBuilder()
-                                .setName(localization.COMMAND_SCHEDULE.name.default)
-                                .setNameLocalizations(localization.COMMAND_SCHEDULE.name.localization ?? null)
-                                .setDescription(localization.COMMAND_SCHEDULE.description.default)
-                                .setDescriptionLocalizations(localization.COMMAND_SCHEDULE.description.localization ?? null)
-                                .setDMPermission(false)
-                                .setNSFW(false)
-                                .setDefaultMemberPermissions(null)
-                        );
+                        client.application.commands.create(new LocalizedSlashCommandBuilder('COMMAND_SCHEDULE').setDMPermission(false).setNSFW(false).setDefaultMemberPermissions(null));
                     }
                 });
 
