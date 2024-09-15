@@ -12,7 +12,7 @@ The first time you use the commands, you’ll be prompted to link your Twitch ac
 
 ## Hosted version
 
-A hosted version of the bot is already available and can be directly invited into your server, [invite it](https://discord.com/oauth2/authorize?client_id=1271947996267024456&integration_type=0&scope=applications.commands) or [visit its directory page](https://discord.com/application-directory/1271947996267024456)!
+A hosted version of the bot is already available and can be directly invited into your server, [invite it](https://discord.com/oauth2/authorize?client_id=1271947996267024456) or [visit its directory page](https://discord.com/application-directory/1271947996267024456)!
 
 ## Host it yourself
 
