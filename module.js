@@ -222,6 +222,8 @@ export default async function (config) {
                                 }
 
                                 return interaction.editReply(getLocalizedText('TEXT_NOT_CONNECTED', locale).replaceAll('$url', `${connectUrl}&state=${LZString.compressToBase64(JSON.stringify({ guildId: interaction.guildId }))}`));
+                            } else if (!channel.timeZone) {
+                                channel.timeZone = defaultTimeZone;
                             }
 
                             let segmentId = LZString.decompressFromUTF16(interaction.options.getString(localization.OPTION_STREAM_STREAM.name.default) ?? '');
@@ -257,7 +259,7 @@ export default async function (config) {
 
                                     const option_date = interaction.options.getString(localization.OPTION_STREAM_DATE.name.default);
                                     const option_time = interaction.options.getString(localization.OPTION_STREAM_TIME.name.default);
-                                    const option_timezone = interaction.options.getString(localization.OPTION_STREAM_TIMEZONE.name.default) ?? channel.timeZone ?? defaultTimeZone;
+                                    const option_timezone = interaction.options.getString(localization.OPTION_STREAM_TIMEZONE.name.default) ?? channel.timeZone;
                                     if (option_date && option_time && option_timezone) {
                                         body.start_time = localizedDate(`${option_date}T${option_time}Z`, option_timezone);
                                         body.timezone = option_timezone;
@@ -371,7 +373,7 @@ export default async function (config) {
                                             channel.timeZone = newTimezone;
                                             await channel.save();
 
-                                            return interaction.editReply(getLocalizedText('TEXT_CHANGED_TIMEZONE', locale).replace('%timeZone%', channel.timeZone));
+                                            return interaction.editReply(getLocalizedText('TEXT_CHANGED_TIMEZONE', locale, channel));
                                         }
 
                                         return interaction.editReply(getLocalizedText('TEXT_ERROR', locale));
@@ -379,10 +381,10 @@ export default async function (config) {
                                         channel.timeZone = defaultTimeZone;
                                         await channel.save();
 
-                                        return interaction.editReply(getLocalizedText('TEXT_CHANGED_TIMEZONE', locale).replace('%timeZone%', channel.timeZone));
+                                        return interaction.editReply(getLocalizedText('TEXT_CHANGED_TIMEZONE', locale, channel));
                                     }
 
-                                    return interaction.editReply(getLocalizedText('TEXT_CURRENT_TIMEZONE', locale).replace('%timeZone%', channel.timeZone ?? defaultTimeZone));
+                                    return interaction.editReply(getLocalizedText('TEXT_CURRENT_TIMEZONE', locale, channel));
                                 case localization.COMMAND_CALENDAR_SETTINGS_CHANGECHANNEL.name.default:
                                     const newChannel = interaction.options.getChannel(localization.OPTION_STREAM_NEW_CHANGECHANNEL.name.default);
                                     const newLanguage = interaction.options.getString(localization.OPTION_LOCALE.name.default);
@@ -390,11 +392,7 @@ export default async function (config) {
 
                                     if (newChannel) {
                                         if (!newChannel?.isTextBased() || !newChannel.permissionsFor(interaction.guild.members.me).has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages])) {
-                                            return interaction.editReply(
-                                                getLocalizedText('TEXT_NOACCESS_CHANGECHANNEL', locale)
-                                                    .replaceAll('%changeChannel%', newChannel)
-                                                    .replaceAll('%changeLanguage%', getLocalizedText(localization[`LANGUAGE_${newLanguage}`] || localization[`LANGUAGE_${newLanguage}`] ? `LANGUAGE_${newLanguage}` : 'LANGUAGE_en', locale))
-                                            );
+                                            return interaction.editReply(getLocalizedText('TEXT_NOACCESS_CHANGECHANNEL', locale, { changeChannel: newChannel, changeLanguage: newLanguage }));
                                         }
 
                                         channel.changeChannel = newChannel.id;
@@ -405,37 +403,21 @@ export default async function (config) {
 
                                         await channel.save();
 
-                                        return interaction.editReply(
-                                            getLocalizedText('TEXT_CHANGED_CHANGECHANNEL', locale)
-                                                .replaceAll('%changeChannel%', `<#${channel.changeChannel}>`)
-                                                .replaceAll('%changeLanguage%', getLocalizedText(localization[`LANGUAGE_${channel.changeLanguage}`] || localization[`LANGUAGE_${channel.changeLanguage}`] ? `LANGUAGE_${channel.changeLanguage}` : 'LANGUAGE_en', locale))
-                                        );
+                                        return interaction.editReply(getLocalizedText('TEXT_CHANGED_CHANGECHANNEL', locale, channel));
                                     } else if (newLanguage) {
                                         channel.changeLanguage = newLanguage;
                                         await channel.save();
 
-                                        return interaction.editReply(
-                                            getLocalizedText('TEXT_CHANGED_CHANGECHANNEL', locale)
-                                                .replaceAll('%changeChannel%', `<#${channel.changeChannel}>`)
-                                                .replaceAll('%changeLanguage%', getLocalizedText(localization[`LANGUAGE_${channel.changeLanguage}`] || localization[`LANGUAGE_${channel.changeLanguage}`] ? `LANGUAGE_${channel.changeLanguage}` : 'LANGUAGE_en', locale))
-                                        );
+                                        return interaction.editReply(getLocalizedText('TEXT_CHANGED_CHANGECHANNEL', locale, channel));
                                     } else if (resetChannel) {
                                         channel.changeChannel = null;
                                         delete channel.changeChannel;
                                         await channel.save();
 
-                                        return interaction.editReply(
-                                            getLocalizedText('TEXT_CHANGED_NO_CHANGECHANNEL', locale)
-                                                .replaceAll('%changeChannel%', `<#${channel.changeChannel}>`)
-                                                .replaceAll('%changeLanguage%', getLocalizedText(localization[`LANGUAGE_${channel.changeLanguage}`] || localization[`LANGUAGE_${channel.changeLanguage}`] ? `LANGUAGE_${channel.changeLanguage}` : 'LANGUAGE_en', locale))
-                                        );
+                                        return interaction.editReply(getLocalizedText('TEXT_CHANGED_NO_CHANGECHANNEL', locale, channel));
                                     }
 
-                                    return interaction.editReply(
-                                        getLocalizedText(channel.changeChannel ? 'TEXT_CURRENT_CHANGECHANNEL' : 'TEXT_NOCURRENT_CHANGECHANNEL', locale)
-                                            .replaceAll('%changeChannel%', `<#${channel.changeChannel}>`)
-                                            .replaceAll('%changeLanguage%', getLocalizedText(localization[`LANGUAGE_${channel.changeLanguage}`] || localization[`LANGUAGE_${channel.changeLanguage}`] ? `LANGUAGE_${channel.changeLanguage}` : 'LANGUAGE_en', locale))
-                                    );
+                                    return interaction.editReply(getLocalizedText(channel.changeChannel ? 'TEXT_CURRENT_CHANGECHANNEL' : 'TEXT_NOCURRENT_CHANGECHANNEL', locale, channel));
                             }
                         }
                     } catch (err) {

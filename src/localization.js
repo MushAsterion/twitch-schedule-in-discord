@@ -745,10 +745,16 @@ export function localizedDate(dateString, timeZone) {
  * Get a localized text value.
  * @param {keyof localizations} key - Key for the text.
  * @param {import('discord.js').LocaleString} locale - Locale to get the text for.
+ * @param {{ guildId: string, timeZone: string, changeChannel: string, changeLanguage: string, twitchId: string }} placeholders - Placeholders to replace.
  * @returns {string}
  */
-export function getLocalizedText(key, locale) {
-    return localizations[key]?.localization?.[locale] ?? localizations[key]?.default ?? localizations[key] ?? '';
+export function getLocalizedText(key, locale, placeholders = {}) {
+    return (localizations[key]?.localization?.[locale] ?? localizations[key]?.default ?? localizations[key] ?? '')
+        .replaceAll('%guildId%', placeholders.guildId)
+        .replaceAll('%timeZone%', placeholders.timeZone)
+        .replaceAll('%changeChannel%', typeof placeholders.changeChannel === 'string' ? `<#${placeholders.changeChannel}>` : placeholders.changeChannel)
+        .replaceAll('%changeLanguage%', getLocalizedText(localizations[`LANGUAGE_${placeholders.changeLanguage}`] ? `LANGUAGE_${placeholders.changeLanguage}` : 'LANGUAGE_en', locale))
+        .replaceAll('%twitchId%', placeholders.twitchId);
 }
 
 export default localizations;
