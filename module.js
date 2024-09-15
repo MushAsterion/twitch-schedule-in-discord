@@ -101,15 +101,21 @@ export async function saveTwitchOAuthCode(clientId, clientSecret, redirectUri, u
     }
 }
 
+/**
+ * Stringify a segment for Discord use.
+ * @param {object} segment - Stream segment to stringify.
+ * @param {string} locale - Locale to use.
+ * @returns {string} The stringified segment.
+ */
 function segmentToString(segment, locale) {
     return `**${segment.title}**\n_${getLocalizedText('LABEL_DATE', locale)} <t:${Math.floor(new Date(segment.start_time) / 1000)}:f> - <t:${Math.floor(new Date(segment.end_time) / 1000)}:f> (<t:${Math.floor(new Date(segment.start_time) / 1000)}:R>)_\n_${getLocalizedText('LABEL_GAME', locale)} ${segment.category?.name ?? getLocalizedText('TEXT_NONE', locale)}_`;
 }
 
 /**
- *
- * @param {import('discord.js').ChatInputCommandInteraction} interaction
- * @param {import('./src/schema/TwitchChannel.js').default} channel
- * @param {object} segment
+ * Send a change to the specified channel.
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - Interaction to respond to.
+ * @param {import('./src/schema/TwitchChannel.js').default} channel - Twitch channel details.
+ * @param {object} segment - Updated stream segment.
  */
 async function sendChange(interaction, channel, segment) {
     try {
@@ -122,7 +128,7 @@ async function sendChange(interaction, channel, segment) {
 
         /** @type {import('discord.js').TextChannel} */
         const changeChannel = await interaction.guild.channels.fetch(channel.changeChannel);
-        changeChannel.send({
+        const res = await changeChannel.send({
             embeds: [
                 new EmbedBuilder()
                     .setTitle(getLocalizedText(subcommand === localization.COMMAND_CALENDAR_DELETE.name.default ? 'TEXT_STREAM_CHANGE_DELETED' : subcommand === localization.COMMAND_CALENDAR_CREATE.name.default ? 'TEXT_STREAM_CHANGE_CREATED' : 'TEXT_STREAM_CHANGE_EDITED', locale))
@@ -132,6 +138,8 @@ async function sendChange(interaction, channel, segment) {
                     .setTimestamp(Date.now())
             ]
         });
+
+        return res;
     } catch (err) {
         console.error(err);
     }
