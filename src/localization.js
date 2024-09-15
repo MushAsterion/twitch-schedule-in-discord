@@ -134,7 +134,7 @@ const localizations = {
             localization: {
                 fr: 'Gérer le calendrier Twitch de la chaîne.',
                 'es-ES': 'Gestiona el calendario del canal Twitch.',
-                'pt-BR': 'Gerencie o calendário do canal Twitch',
+                'pt-BR': 'Gerencie o calendário do canal Twitch.',
                 it: 'Gestisci il calendario del canale Twitch.'
             }
         }
@@ -236,7 +236,7 @@ const localizations = {
         description: {
             default: 'Default calendar timezone for future streams.',
             localization: {
-                fr: 'Fuseau horaire par défaut du calendrier pour les futurs streams',
+                fr: 'Fuseau horaire par défaut du calendrier pour les futurs streams.',
                 'es-ES': 'Zona horaria de calendario predeterminada para los futuros streams.',
                 'pt-BR': 'Fuso horário de calendário padrão para os futuros streams.',
                 it: 'Fuso orario del calendario predefinito per i futuri streams.'
@@ -554,7 +554,7 @@ const localizations = {
         default: 'The stream was successfully created.',
         localization: {
             fr: 'Le stream a été créé avec succès.',
-            'es-ES': 'El stream se creó con éxito',
+            'es-ES': 'El stream se creó con éxito.',
             'pt-BR': 'O stream foi criado com sucesso.',
             it: 'Lo stream è stato creato con successo.'
         }
