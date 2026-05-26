@@ -7,6 +7,12 @@ import localization, { getLocalizedText, localizedDate } from './src/localizatio
 import { sortByRelevance } from './src/string.js';
 import { LocalizedSlashCommandBooleanOption, LocalizedSlashCommandBuilder, LocalizedSlashCommandChannelOption, LocalizedSlashCommandIntegerOption, LocalizedSlashCommandStringOption, LocalizedSlashCommandSubcommandBuilder, LocalizedSlashCommandSubcommandGroupBuilder } from './src/discord.js';
 
+// Cache frequently used values to reduce memory allocations
+const CACHED_TIMEZONES = Intl.supportedValuesOf('timeZone');
+const CACHED_HOURS = Array.from({ length: 24 }, (_, i) => `${i < 10 ? '0' : ''}${i}`);
+const CACHED_MINUTES = Array.from({ length: 60 }, (_, j) => `${j < 10 ? '0' : ''}${j}`);
+const TIME_SLOT_SEPARATOR = ':';
+
 /**
  * Add stream options to builder.
  * @param {LocalizedSlashCommandSubcommandBuilder} builder - Builder to extend.
@@ -15,6 +21,39 @@ import { LocalizedSlashCommandBooleanOption, LocalizedSlashCommandBuilder, Local
  */
 function addStreamOptions(builder, required = false) {
     return builder.addStringOption(new LocalizedSlashCommandStringOption('OPTION_STREAM_TITLE').setMaxLength(140).setRequired(required)).addStringOption(new LocalizedSlashCommandStringOption('OPTION_STREAM_GAME').setAutocomplete(true).setRequired(required)).addStringOption(new LocalizedSlashCommandStringOption('OPTION_STREAM_DATE').setAutocomplete(true).setRequired(required)).addStringOption(new LocalizedSlashCommandStringOption('OPTION_STREAM_TIME').setAutocomplete(true).setRequired(required)).addIntegerOption(new LocalizedSlashCommandIntegerOption('OPTION_STREAM_DURATION').setMinValue(30).setMaxValue(1380).setRequired(required)).addStringOption(new LocalizedSlashCommandStringOption('OPTION_STREAM_TIMEZONE').setAutocomplete(true).setRequired(false));
+}
+
+/**
+ * Generate time slot options efficiently.
+ * @returns {Array<{name: string, value: string}>}
+ */
+function generateTimeSlots() {
+    const slots = [];
+    for (let i = 0; i < 24; i++) {
+        const hour = CACHED_HOURS[i];
+        for (let j = 0; j < 60; j++) {
+            slots.push(`${hour}${TIME_SLOT_SEPARATOR}${CACHED_MINUTES[j]}`);
+        }
+    }
+    return slots;
+}
+
+/**
+ * Generate date options efficiently.
+ * @param {string} locale - Locale for date formatting.
+ * @returns {Array<{name: string, value: string}>}
+ */
+function generateDateOptions(locale) {
+    const dates = [];
+    for (let i = 0; i < 365; i++) {
+        const date = new Date();
+        date.setDate(date.getDate() + i);
+        dates.push({
+            name: `${date.toLocaleDateString(locale)} (${date.toLocaleDateString(locale, { dateStyle: 'long' })})`,
+            value: date.toISOString().slice(0, 10)
+        });
+    }
+    return dates;
 }
 
 /**
@@ -116,7 +155,7 @@ export default async function (config) {
         return refreshTwitchToken(config.twitch.clientId, config.twitch.clientSecret, interaction.guildId, document, undefined, config.twitch.redirectUri, TwitchChannel);
     }
 
-    const defaultTimeZone = Intl.supportedValuesOf('timeZone').includes(config.timeZone) ? config.timeZone : Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const defaultTimeZone = CACHED_TIMEZONES.includes(config.timeZone) ? config.timeZone : Intl.DateTimeFormat().resolvedOptions().timeZone;
 
     return Promise.all(
         (config.token instanceof Array ? config.token : [config.token]).map(async token => {
@@ -166,48 +205,37 @@ export default async function (config) {
                                     return interaction.respond([]);
                                 }
 
+                                const focusedRegex = new RegExp(focused.value, 'gi');
                                 return interaction.respond(
                                     (await fetchTwitchData(schedule => schedule.data?.segments, `https://api.twitch.tv/helix/schedule?broadcaster_id=${channel.twitchId}&start_time=${new Date().toISOString()}&first=25`, { headers: await getTwitchHeaders(config.twitch.clientId, config.twitch.clientSecret) }, 2))
-                                        .map(segment => ({
-                                            name: `${segment.title.slice(0, 60)}${segment.title.length > 60 ? '...' : ''} (${new Date(segment.start_time).toLocaleDateString(locale, {
-                                                hour: '2-digit',
-                                                minute: '2-digit'
-                                            })})`,
-                                            value: LZString.compressToUTF16(segment.id)
-                                        }))
-                                        .filter(choice => choice.name.match(new RegExp(`${focused.value}`, 'gi')))
+                                        .map(segment => {
+                                            const displayTitle = segment.title.length > 60 ? segment.title.slice(0, 60) + '...' : segment.title;
+                                            return {
+                                                name: `${displayTitle} (${new Date(segment.start_time).toLocaleDateString(locale, {
+                                                    hour: '2-digit',
+                                                    minute: '2-digit'
+                                                })})`,
+                                                value: LZString.compressToUTF16(segment.id)
+                                            };
+                                        })
+                                        .filter(choice => focusedRegex.test(choice.name))
                                         .slice(0, 25)
                                 );
                             } else if (focused.name === localization.OPTION_STREAM_DATE.name.default) {
-                                return interaction.respond(
-                                    new Array(365)
-                                        .fill(undefined)
-                                        .map((_, i) => {
-                                            const date = new Date();
-                                            date.setDate(date.getDate() + i);
-
-                                            return {
-                                                name: `${date.toLocaleDateString(locale)} (${date.toLocaleDateString(locale, { dateStyle: 'long' })})`,
-                                                value: date.toISOString().slice(0, 10)
-                                            };
-                                        })
-                                        .filter(d => d.name.match(focused.value) || d.value.match(focused.value))
-                                        .slice(0, 25)
-                                );
+                                const dateOptions = generateDateOptions(locale);
+                                return interaction.respond(dateOptions.filter(d => d.name.match(focused.value) || d.value.match(focused.value)).slice(0, 25));
                             } else if (focused.name === localization.OPTION_STREAM_TIME.name.default) {
+                                const timeSlots = generateTimeSlots();
                                 return interaction.respond(
-                                    new Array(24)
-                                        .fill(undefined)
-                                        .map((_, i) => new Array(60).fill(undefined).map((_, j) => `${i < 10 ? '0' : ''}${i}:${j < 10 ? '0' : ''}${j}`))
-                                        .flat(1)
+                                    timeSlots
                                         .filter(h => h.startsWith(focused.value))
                                         .slice(0, 25)
                                         .map(h => ({ name: h, value: h }))
                                 );
                             } else if (focused.name === localization.OPTION_STREAM_TIMEZONE.name.default || (subcommand === localization.COMMAND_CALENDAR_SETTINGS_TIMEZONE.name.default && focused.name === localization.OPTION_STREAM_NEW_TIMEZONE.name.default)) {
+                                const timezoneRegex = new RegExp(focused.value, 'i');
                                 return interaction.respond(
-                                    Intl.supportedValuesOf('timeZone')
-                                        .filter(t => t.match(new RegExp(focused.value, 'i')))
+                                    CACHED_TIMEZONES.filter(t => timezoneRegex.test(t))
                                         .slice(0, 25)
                                         .map(t => ({ name: t, value: t }))
                                 );
@@ -303,18 +331,20 @@ export default async function (config) {
                                             const res = await response.json();
 
                                             try {
+                                                const segment = res.data.segments[0];
                                                 const discordOption = interaction.options.getBoolean(localization.OPTION_STREAM_DISCORD.name.default);
-                                                const linkedEvents = [...(await interaction.guild.scheduledEvents.fetch()).values()].filter(e => e.description.includes(res.data.segments[0].id));
+                                                const scheduledEvents = await interaction.guild.scheduledEvents.fetch();
+                                                const linkedEvents = Array.from(scheduledEvents.values()).filter(e => e.description.includes(segment.id));
 
                                                 if (discordOption) {
                                                     const eventConfig = {
                                                         entityType: GuildScheduledEventEntityType.External,
                                                         privacyLevel: GuildScheduledEventPrivacyLevel.GuildOnly,
-                                                        scheduledStartTime: new Date(res.data.segments[0].start_time).getTime(),
-                                                        scheduledEndTime: new Date(res.data.segments[0].end_time).getTime(),
+                                                        scheduledStartTime: new Date(segment.start_time).getTime(),
+                                                        scheduledEndTime: new Date(segment.end_time).getTime(),
                                                         entityMetadata: { location: `https://www.twitch.tv/${res.data.broadcaster_login}` },
-                                                        name: res.data.segments[0].title,
-                                                        description: `[⛓](https://www.twitch.tv/${res.data.broadcaster_login}/schedule?segmentID=${res.data.segments[0].id})`
+                                                        name: segment.title,
+                                                        description: `[⛓](https://www.twitch.tv/${res.data.broadcaster_login}/schedule?segmentID=${segment.id})`
                                                     };
 
                                                     if (linkedEvents.length) {
@@ -351,7 +381,11 @@ export default async function (config) {
                                         headers: await getTwitchHeaders(config.twitch.clientId, config.twitch.clientSecret, await getTwitchUserToken(interaction, channel))
                                     }).then(async response => {
                                         if (response.status >= 200 && response.status < 300) {
-                                            await Promise.all([...(await interaction.guild.scheduledEvents.fetch()).values()].filter(e => e.description.includes(segmentId)).map(e => e.delete())).catch(console.error);
+                                            const scheduledEvents = await interaction.guild.scheduledEvents.fetch();
+                                            const linkedEventDeletions = Array.from(scheduledEvents.values())
+                                                .filter(e => e.description.includes(segmentId))
+                                                .map(e => e.delete());
+                                            await Promise.all(linkedEventDeletions).catch(console.error);
                                             await sendChange(interaction, channel, segmentRes?.data?.segments?.[0]);
                                             return interaction.editReply(getLocalizedText('TEXT_STREAM_DELETED', locale));
                                         }
@@ -369,7 +403,7 @@ export default async function (config) {
                                     const resetTimezone = interaction.options.getBoolean(localization.OPTION_STREAM_RESET_TIMEZONE.name.default);
 
                                     if (newTimezone) {
-                                        if (Intl.supportedValuesOf('timeZone').includes(newTimezone)) {
+                                        if (CACHED_TIMEZONES.includes(newTimezone)) {
                                             channel.timeZone = newTimezone;
                                             await channel.save();
 

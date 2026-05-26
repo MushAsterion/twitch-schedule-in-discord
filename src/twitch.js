@@ -59,21 +59,25 @@ export async function getTwitchHeaders(clientId, clientSecret, access_token) {
  * @param {string} query - Fetch query string.
  * @param {object} [options] - Fetch query options.
  * @param {number|undefined} [maxPages] - Max pages to explore. Defaults to undefined (infinite).
- * @param {*[]} [output] - Output data. Defaults to an empty array.
- * @param {string|undefined} [cursor] - Cursor to start by.
- * @param {number} [page] - Current data page
  * @returns {Promise<*[]>}
  */
-export async function fetchTwitchData(getData, query, options, maxPages, output = [], cursor = undefined, page = 1) {
-    const { data, pagination } = await fetch(`${query}${cursor ? `&after=${cursor}` : ''}`, options)
-        .then(response => response.json())
-        .then(response => ({ data: getData(response) ?? [], pagination: response.pagination?.cursor }));
+export async function fetchTwitchData(getData, query, options, maxPages) {
+    const output = [];
+    let cursor = undefined;
+    let page = 1;
 
-    output.push(...data);
+    while (true) {
+        const { data, pagination } = await fetch(`${query}${cursor ? `&after=${cursor}` : ''}`, options)
+            .then(response => response.json())
+            .then(response => ({ data: getData(response) ?? [], pagination: response.pagination?.cursor }));
 
-    if ((typeof maxPages === 'number' && page >= maxPages) || !pagination) {
-        return output;
+        output.push(...data);
+
+        if ((typeof maxPages === 'number' && page >= maxPages) || !pagination) {
+            return output;
+        }
+
+        cursor = pagination;
+        page++;
     }
-
-    return fetchTwitchData(getData, query, options, maxPages, output, pagination, page + 1);
 }
