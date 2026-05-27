@@ -1,6 +1,6 @@
 import { Colors, EmbedBuilder, GuildScheduledEventEntityType, GuildScheduledEventPrivacyLevel, PermissionFlagsBits } from 'discord.js';
 import { getLocalizedText } from '../localization.js';
-import { DISCORD_EMBED_DESCRIPTION_LIMIT } from './constants.js';
+import { DISCORD_EMBED_DESCRIPTION_LIMIT } from '../commands/constants.js';
 import localization from '../localization.js';
 
 /**
