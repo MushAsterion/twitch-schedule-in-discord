@@ -1,7 +1,9 @@
 import { config } from 'dotenv';
 config();
 
-import Bot, { saveTwitchOAuthCode } from './module.js';
+import Bot, { saveTwitchOAuthCodeWrapper } from './module.js';
+
+// Initialize Discord bot
 Bot({
     mongodb: {
         protocol: process.env.MONGODB_PROTOCOL,
@@ -21,10 +23,11 @@ Bot({
     timeZone: process.env.DEFAULT_TIMEZONE
 });
 
+// Optional: Start HTTP server for OAuth callback if PORT is configured
 import { createServer } from 'http';
 if (process.env.PORT) {
     createServer(async (req, res) => {
-        if (await saveTwitchOAuthCode(process.env.TWITCH_CLIENT_ID, process.env.TWITCH_CLIENT_SECRET, process.env.TWITCH_CLIENT_REDIRECT_URI, `http://${req.headers.host}${req.url}`)) {
+        if (await saveTwitchOAuthCodeWrapper(process.env.TWITCH_CLIENT_ID, process.env.TWITCH_CLIENT_SECRET, process.env.TWITCH_CLIENT_REDIRECT_URI, `http://${req.headers.host}${req.url}`)) {
             res.writeHead(200, { 'Content-Type': 'text/html' });
             res.end('<p>You can now close this window.</p><script>setTimeout(() => window.close(), 2000);</script>');
         } else {
